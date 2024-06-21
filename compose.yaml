@@ -1,0 +1,18 @@
+services:
+  api:
+    build:
+      context: .
+    restart: always
+    ports:
+      - "3000:8080"
+  db:
+    image: postgres:12.19-alpine3.20
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD=password
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
