@@ -3,24 +3,21 @@ package api
 import (
 	"net/http"
 
-	"github.com/WilliamTrojniak/TabAppBackend/db"
 	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
 	"github.com/WilliamTrojniak/TabAppBackend/services/user"
 )
 
 type APIServer struct {
   addr string
-  db db.Store
 }
 
 type Handler interface {
   RegisterRoutes(http.ServeMux);
 }
 
-func NewAPIServer(addr string, db db.Store) *APIServer {
+func NewAPIServer(addr string) *APIServer {
   return &APIServer{
     addr: addr,
-    db: db,
   };
 }
 
