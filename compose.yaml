@@ -2,18 +2,28 @@ services:
   api:
     build:
       context: .
+      args:
+        ENV: ${ENV:-dev}
     restart: always
     ports:
       - "3000:3000"
     environment:
-      - ENV_FILE=/run/secrets/api_env
+      - ENV_DIR=/run/secrets
     secrets:
-      - api_env
+      - base.env
+      - dev.env
   db:
     image: postgres:12.19-alpine3.20
     restart: always
+    volumes:
+      - pgdata:/var/lib/postresql/data
     environment:
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=db
+      - POSTGRES_USER_FILE=/run/secrets/postgres_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - postgres_user
+      - postgres_password
 
   adminer:
     image: adminer
@@ -22,5 +32,14 @@ services:
       - "8080:8080"
 
 secrets:
-  api_env:
-    file: ./.env
+  base.env:
+    file: ./base.env
+  dev.env:
+    file: ./dev.env
+  postgres_user:
+    file: ./postgres_user.secret
+  postgres_password:
+    file: ./postgres_password.secret
+
+volumes:
+  pgdata:

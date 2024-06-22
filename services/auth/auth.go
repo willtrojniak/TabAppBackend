@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/WilliamTrojniak/TabAppBackend/services/env"
+	"github.com/WilliamTrojniak/TabAppBackend/env"
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"

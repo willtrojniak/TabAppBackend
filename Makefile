@@ -1,5 +1,5 @@
 build:
-	@go build -o bin/api cmd/main.go
+	@go build -o bin/api -ldflags "-X env.EXT_ENVIRONMENT=dev" cmd/main.go
 
 test:
 	@go test -v ./...
