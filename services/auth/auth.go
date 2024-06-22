@@ -27,9 +27,8 @@ func NewHandler() *Handler {
 }
 
 func init() {
-  config := env.GetConfig();
 
-  store := sessions.NewCookieStore([]byte(config.SESSION_SECRET));
+  store := sessions.NewCookieStore([]byte(env.Envs.SESSION_SECRET));
   store.MaxAge(maxAge);
   store.Options.Path = "/"
   store.Options.HttpOnly = true;
@@ -39,7 +38,7 @@ func init() {
 
   goth.UseProviders(
     // TODO: Make URL dynamic
-    google.New(config.OAUTH2_GOOGLE_CLIENT_ID, config.OAUTH2_GOOGLE_CLIENT_SECRET, "http://127.0.0.1:3000/auth/google/callback"),
+    google.New(env.Envs.OAUTH2_GOOGLE_CLIENT_ID, env.Envs.OAUTH2_GOOGLE_CLIENT_SECRET, "http://127.0.0.1:3000/auth/google/callback"),
   );
 }
 

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sync"
 
 	"github.com/joho/godotenv"
 )
@@ -22,9 +21,7 @@ type config struct {
   POSTGRES_DB string
 }
 
-var lock = &sync.Mutex{};
-var configData *config;
-
+var Envs = getConfig();
 
 const (
   DEV string = "dev"
@@ -33,30 +30,25 @@ const (
 
 var EXT_ENVIRONMENT string = DEV; 
 
-func GetConfig() *config {
-  if configData == nil {
-    lock.Lock()
-    defer lock.Unlock();
+func getConfig() config {
+  envDir := os.Getenv("ENV_DIR");
 
-    if configData == nil {
-      envDir := os.Getenv("ENV_DIR");
-
-      if err := godotenv.Load(filepath.Join(envDir, "base.env")); err != nil {
-        log.Fatal("Failed to load base env file!");
-      }
-
-      if err := godotenv.Load(filepath.Join(envDir, EXT_ENVIRONMENT + ".env")); err == nil {
-        fmt.Printf("Running environment %v\n", EXT_ENVIRONMENT)
-      }
-      
-      configData = &config{};
-      configStruct := reflect.ValueOf(configData).Elem();
-      types := configStruct.Type();
-      for i := 0; i < configStruct.NumField(); i++ {
-        configStruct.Field(i).SetString(getEnvOrFail(types.Field(i).Name))
-      }
-    }
+  if err := godotenv.Load(filepath.Join(envDir, "base.env")); err != nil {
+    log.Fatal("Failed to load base env file!");
   }
+
+  if err := godotenv.Load(filepath.Join(envDir, EXT_ENVIRONMENT + ".env")); err == nil {
+    fmt.Printf("Running environment %v\n", EXT_ENVIRONMENT)
+  }
+      
+  configData := config{};
+  configStruct := reflect.ValueOf(configData).Elem();
+  types := configStruct.Type();
+
+  for i := 0; i < configStruct.NumField(); i++ {
+    configStruct.Field(i).SetString(getEnvOrFail(types.Field(i).Name))
+  }
+
   return configData;
 }
 

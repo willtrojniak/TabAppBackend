@@ -13,25 +13,23 @@ import (
 
 func main() {
 
-  config := env.GetConfig();
-  port, err := strconv.Atoi(config.POSTGRES_PORT);
+  port, err := strconv.Atoi(env.Envs.POSTGRES_PORT);
   if err != nil {
     log.Fatal("Could not convert POSTGRES_PORT to int");
   }
 
   db, err := db.NewPostgresStorage(pgx.ConnPoolConfig{
     ConnConfig: pgx.ConnConfig{
-      Host: config.POSTGRES_HOST,
+      Host: env.Envs.POSTGRES_HOST,
       Port: uint16(port),
-      Database: config.POSTGRES_DB,
-      User: config.POSTGRES_USER,
-      Password: config.POSTGRES_PASSWORD,
+      Database: env.Envs.POSTGRES_DB,
+      User: env.Envs.POSTGRES_USER,
+      Password: env.Envs.POSTGRES_PASSWORD,
     },
   });
   if err != nil {
     log.Fatal(err);
   }
-
   
   server := api.NewAPIServer(":3000", db)
   if err := server.Run(); err != nil {
