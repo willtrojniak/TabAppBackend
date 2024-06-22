@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
 	"github.com/WilliamTrojniak/TabAppBackend/services/user"
 )
 
@@ -21,13 +22,17 @@ func NewAPIServer(addr string) *APIServer {
 }
 
 func (s *APIServer) Run() error {
+  router := http.NewServeMux()
+
+  authHandler := auth.NewHandler();
+  authHandler.RegisterRoutes(router);
+
   v1 := http.NewServeMux();
   
-  userHandler := user.NewHandler();
+  userHandler := user.NewHandler(authHandler);
   userHandler.RegisterRoutes(v1);
 
 
-  router := http.NewServeMux()
-  router.Handle("/api/v1/", http.StripPrefix("/api/v1", WithMiddleware(RequestLoggerMiddleware)(v1)));
-  return http.ListenAndServe(s.addr, router);
+  router.Handle("/api/v1/", http.StripPrefix("/api/v1", authHandler.RequireAuth(v1)));
+  return http.ListenAndServe(s.addr, WithMiddleware(RequestLoggerMiddleware)(router));
 }

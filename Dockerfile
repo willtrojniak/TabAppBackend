@@ -8,6 +8,6 @@ RUN go build -v -o ./bin/api ./cmd/main.go
 
 FROM debian:latest
 COPY --from=build /usr/src/app/bin/api /bin/api
-EXPOSE 8080
+EXPOSE 3000
 CMD ["/bin/api"]
 

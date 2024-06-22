@@ -8,7 +8,8 @@ import (
 
 
 func main() {
-  server := api.NewAPIServer(":8080")
+  
+  server := api.NewAPIServer(":3000")
   if err := server.Run(); err != nil {
     log.Fatal(err);
   }

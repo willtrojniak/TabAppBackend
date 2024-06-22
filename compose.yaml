@@ -4,7 +4,11 @@ services:
       context: .
     restart: always
     ports:
-      - "3000:8080"
+      - "3000:3000"
+    environment:
+      - ENV_FILE=/run/secrets/api_env
+    secrets:
+      - api_env
   db:
     image: postgres:12.19-alpine3.20
     restart: always
@@ -16,3 +20,7 @@ services:
     restart: always
     ports:
       - "8080:8080"
+
+secrets:
+  api_env:
+    file: ./.env

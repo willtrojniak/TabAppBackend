@@ -3,17 +3,23 @@ package user
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
 )
 
 type Handler struct{
+  authHandler *auth.Handler
+  
 }
 
 type Test struct {
   Name string `json:"name"`
 }
 
-func NewHandler() *Handler {
-  return &Handler{};
+func NewHandler(authHandler *auth.Handler) *Handler {
+  return &Handler{
+    authHandler: authHandler,
+  };
 }
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
@@ -21,6 +27,12 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
-  json.NewEncoder(w).Encode(Test{Name: "Will"});
+  user, err := h.authHandler.GetUserSession(r);
+  if err != nil {
+    http.Error(w, "unauthorized", http.StatusUnauthorized);
+    return;
+  }
+
+  json.NewEncoder(w).Encode(Test{Name: user.Email});
   return;
 }
