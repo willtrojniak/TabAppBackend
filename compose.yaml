@@ -26,6 +26,8 @@ services:
       - postgres_password
 
   adminer:
+    profiles:
+      - debug
     image: adminer
     restart: always
     ports:
