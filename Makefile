@@ -1,5 +1,5 @@
 ifneq (, $(wildcard ./base.env))
-	include .env
+	include base.env
 endif
 
 

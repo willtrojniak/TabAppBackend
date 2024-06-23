@@ -5,26 +5,29 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
 	"github.com/WilliamTrojniak/TabAppBackend/services/user"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type APIServer struct {
   addr string
+  pool *pgxpool.Pool
 }
 
 type Handler interface {
   RegisterRoutes(http.ServeMux);
 }
 
-func NewAPIServer(addr string) *APIServer {
+func NewAPIServer(addr string, pool *pgxpool.Pool) *APIServer {
   return &APIServer{
     addr: addr,
+    pool: pool,
   };
 }
 
 func (s *APIServer) Run() error {
   router := http.NewServeMux()
 
-  authHandler := auth.NewHandler();
+  authHandler := auth.NewHandler(user.NewStore(s.pool));
   authHandler.RegisterRoutes(router);
 
   v1 := http.NewServeMux();

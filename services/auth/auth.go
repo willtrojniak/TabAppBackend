@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/WilliamTrojniak/TabAppBackend/env"
+	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
@@ -18,11 +19,13 @@ const (
 
 type Handler struct{
   store sessions.Store
+  userStore types.UserStore
 }
 
-func NewHandler() *Handler {
+func NewHandler(userStore types.UserStore) *Handler {
   return &Handler{
     store: gothic.Store, 
+    userStore: userStore,
   };
 }
 
@@ -38,14 +41,15 @@ func init() {
 
   goth.UseProviders(
     // TODO: Make URL dynamic
-    google.New(env.Envs.OAUTH2_GOOGLE_CLIENT_ID, env.Envs.OAUTH2_GOOGLE_CLIENT_SECRET, "http://127.0.0.1:3000/auth/google/callback"),
+    google.New(env.Envs.OAUTH2_GOOGLE_CLIENT_ID, env.Envs.OAUTH2_GOOGLE_CLIENT_SECRET, "http://127.0.0.1:3000/auth/google/callback",
+      "openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"),
   );
 }
 
-func (h *Handler) storeUserSession(w http.ResponseWriter, r *http.Request, user goth.User) error {
+func (h *Handler) storeUserSession(w http.ResponseWriter, r *http.Request, user *goth.User) error {
 
   session, _ := h.store.Get(r, session_cookie);
-  session.Values["user"] = user;
+  session.Values["user"] = goth.User{RawData: user.RawData, Provider: user.Provider, Email: user.Email, Name: user.Name};
   
   err := session.Save(r, w);
   return err;
@@ -61,7 +65,6 @@ func (h *Handler) GetUserSession(r *http.Request) (goth.User, error) {
   if u == nil {
     return goth.User{}, fmt.Errorf("user is not authenticated! %v", u);
   }
-
   return u.(goth.User), nil;
 }
 

@@ -7,7 +7,7 @@ import (
 )
 
 type postgres struct {
-  conn *pgxpool.Pool
+  *pgxpool.Pool
   
 }
 
@@ -18,7 +18,7 @@ func NewPostgresStorage(context context.Context, config *pgxpool.Config) (*postg
   }
 
   pg := &postgres{
-    conn: conn,
+    Pool: conn,
   }
 
   return pg, nil;

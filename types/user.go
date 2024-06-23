@@ -1,18 +1,19 @@
 package types
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type UserStore interface {
-
+  CreateUser(context context.Context, user *UserCreate) (*User, error)
 }
 
 type UserCreate struct {
-  Name string `json:"name" db:"name"`
   Email string `json:"email" db:"email"`
+  Name string `json:"name" db:"name"`
 }
 
 type User struct {

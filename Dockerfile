@@ -13,7 +13,10 @@ FROM build_base as build
 ARG ENV="dev"
 RUN go build -v -o ./bin/api -ldflags "-X env.EXT_ENVIRONMENT=${ENV}" ./cmd/main.go
 
-FROM debian:latest
+FROM debian:bookworm
+RUN apt update
+RUN apt install ca-certificates -y
+RUN update-ca-certificates
 COPY --from=build_migrate /usr/src/app/bin/migrate /bin/migrate
 COPY --from=build /usr/src/app/bin/api /bin/api
 EXPOSE 3000

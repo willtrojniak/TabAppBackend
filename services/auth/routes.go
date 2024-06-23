@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/markbates/goth/gothic"
 )
 
@@ -21,15 +22,29 @@ func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
   user, err := gothic.CompleteUserAuth(w, r);
   if err != nil {
     fmt.Fprintln(w, err);
-    return
+    return;
   }
+  fmt.Println(user);
   
-  err = h.storeUserSession(w, r, user);
-  if err != nil {
+  if err := h.storeUserSession(w, r, &user); err != nil {
+    // TODO: Better logging
+    fmt.Printf("%v\n", err);
     http.Error(w, "Internal server error", http.StatusInternalServerError);
+    return;
   }
 
-  fmt.Println(user);
+  if _, err := h.userStore.CreateUser(context.TODO(), &types.UserCreate{Email: user.Email, Name: user.Name}); err != nil {
+    fmt.Printf("%v\n", err);
+    http.Error(w, "Internal server error", http.StatusInternalServerError);
+    return;
+  }
+
+  fmt.Println("=====RAW=====")
+  fmt.Println(user.RawData);
+  fmt.Println("=====EMAIL=====")
+  fmt.Println(user.Email);
+  fmt.Println("=====NAME=====")
+  fmt.Println(user.Name);
   http.Redirect(w, r, "http://localhost:5173", http.StatusFound);
   return;
   

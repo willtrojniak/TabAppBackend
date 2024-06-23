@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
@@ -32,6 +33,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "unauthorized", http.StatusUnauthorized);
     return;
   }
+  fmt.Println(user.RawData);
 
   json.NewEncoder(w).Encode(Test{Name: user.Email});
   return;

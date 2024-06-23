@@ -2,41 +2,31 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"strconv"
 
 	"github.com/WilliamTrojniak/TabAppBackend/cmd/api"
 	"github.com/WilliamTrojniak/TabAppBackend/db"
 	"github.com/WilliamTrojniak/TabAppBackend/env"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 )
 
 
 func main() {
 
-  port, err := strconv.Atoi(env.Envs.POSTGRES_PORT);
+  databaseURL := fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable", env.Envs.POSTGRES_USER, env.Envs.POSTGRES_PASSWORD, env.Envs.POSTGRES_HOST, env.Envs.POSTGRES_PORT, env.Envs.POSTGRES_DB);
+  pgConfig, err := pgxpool.ParseConfig(databaseURL);
   if err != nil {
-    log.Fatal("Could not convert POSTGRES_PORT to int");
+    log.Fatal(err);
   }
 
-  _, err = db.NewPostgresStorage(context.Background(), &pgxpool.Config{
-    ConnConfig: &pgx.ConnConfig{
-      Config: pgconn.Config{
-        Host: env.Envs.POSTGRES_HOST,
-        Port: uint16(port),
-        Database: env.Envs.POSTGRES_DB,
-        User: env.Envs.POSTGRES_USER,
-        Password: env.Envs.POSTGRES_PASSWORD,
-      },
-    },
-  });
+  pg, err := db.NewPostgresStorage(context.Background(), pgConfig);
   if err != nil {
     log.Fatal(err);
   }
   
-  server := api.NewAPIServer(":3000")
+  server := api.NewAPIServer(":3000", pg.Pool);
   if err := server.Run(); err != nil {
     log.Fatal(err);
   }
