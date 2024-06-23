@@ -3,8 +3,6 @@ package user
 import (
 	"encoding/json"
 	"net/http"
-
-	"github.com/WilliamTrojniak/TabAppBackend/services"
 )
 
 
@@ -15,7 +13,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
   id, err := h.auth.GetUserSession(r);
   if err != nil {
-    services.HandleHttpError(w, err);
+    h.handleError(w, err);
     return;
   }
 

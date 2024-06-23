@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/google/uuid"
@@ -11,12 +12,14 @@ import (
 
 type Handler struct{
   store types.UserStore;
+  handleError services.HTTPErrorHandler
   auth *auth.Handler;
 }
 
-func NewHandler(store types.UserStore, auth *auth.Handler) *Handler {
+func NewHandler(store types.UserStore, handleError services.HTTPErrorHandler, auth *auth.Handler) *Handler {
   return &Handler{
     store: store,
+    handleError: handleError,
     auth: auth,
   };
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
 	"github.com/WilliamTrojniak/TabAppBackend/services/user"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,8 +27,8 @@ func NewAPIServer(addr string, pool *pgxpool.Pool) *APIServer {
 
 func (s *APIServer) Run() error {
 
-  authHandler := auth.NewHandler(user.NewPGXStore(s.pool).CreateUser);
-  userHandler := user.NewHandler(user.NewPGXStore(s.pool), authHandler);
+  authHandler := auth.NewHandler(user.NewPGXStore(s.pool), services.HandleHttpError);
+  userHandler := user.NewHandler(user.NewPGXStore(s.pool), services.HandleHttpError, authHandler);
 
   router := http.NewServeMux()
   v1 := http.NewServeMux();

@@ -21,13 +21,15 @@ const (
 
 type Handler struct{
   store sessions.Store
-  createUser func(context.Context, *types.UserCreate) (*uuid.UUID, error)
+  handleError services.HTTPErrorHandler;
+  userStore types.UserStore;
 }
 
-func NewHandler(createUserFn func(context.Context, *types.UserCreate) (*uuid.UUID, error)) *Handler {
+func NewHandler(userStore types.UserStore, handleError services.HTTPErrorHandler) *Handler {
   return &Handler{
     store: gothic.Store, 
-    createUser: createUserFn,
+    handleError: handleError,
+    userStore: userStore,
   };
 }
 
@@ -62,7 +64,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request, provider str
     return services.NewInternalServiceError(err);
   }
 
-  userUUID, err := h.createUser(context.Background(), &types.UserCreate{Email: user.Email, Name: user.Name});
+  userUUID, err := h.userStore.CreateUser(context.Background(), &types.UserCreate{Email: user.Email, Name: user.Name});
   if err != nil {
     return services.NewInternalServiceError(err);
   }
@@ -118,7 +120,7 @@ func (h *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
   return func(w http.ResponseWriter, r *http.Request) {
     _, err := h.GetUserSession(r);
     if err != nil {
-      services.HandleHttpError(w, err);
+      h.handleError(w, err);
       return;
     }
     next.ServeHTTP(w, r);

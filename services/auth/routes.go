@@ -2,8 +2,6 @@ package auth
 
 import (
 	"net/http"
-
-	"github.com/WilliamTrojniak/TabAppBackend/services"
 )
 
 
@@ -18,7 +16,7 @@ func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
 
   err := h.authorize(w, r, provider);
   if err != nil {
-    services.HandleHttpError(w, err);
+    h.handleError(w, err);
     return;
   }
 
@@ -31,7 +29,7 @@ func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleAuth(w http.ResponseWriter, r *http.Request) {
   provider := r.PathValue("provider");
   if err := h.beginAuthorize(w, r, provider); err != nil {
-    services.HandleHttpError(w, err);
+    h.handleError(w, err);
     return;
   }
   
@@ -41,7 +39,7 @@ func (h *Handler) handleAuth(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 
   if err := h.logout(w, r); err != nil {
-    services.HandleHttpError(w, err);
+    h.handleError(w, err);
     return;
   }
 

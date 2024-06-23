@@ -22,6 +22,8 @@ func writeHttpError(w http.ResponseWriter, e HTTPError) {
   
 }
 
+type HTTPErrorHandler func(http.ResponseWriter, error);
+
 func HandleHttpError(w http.ResponseWriter, err error) {
   switch err := err.(type) {
   case HTTPError:
