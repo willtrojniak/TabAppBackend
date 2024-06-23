@@ -42,7 +42,7 @@ func getConfig() config {
   }
       
   configData := config{};
-  configStruct := reflect.ValueOf(configData).Elem();
+  configStruct := reflect.ValueOf(&configData).Elem();
   types := configStruct.Type();
 
   for i := 0; i < configStruct.NumField(); i++ {

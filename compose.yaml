@@ -12,9 +12,13 @@ services:
     secrets:
       - base.env
       - dev.env
+    volumes:
+      - ./cmd/migrate/migrations:/migrations
   db:
     image: postgres:12.19-alpine3.20
     restart: always
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postresql/data
     environment:
@@ -28,10 +32,13 @@ services:
   adminer:
     profiles:
       - debug
+    depends_on:
+      - db
     image: adminer
     restart: always
     ports:
       - "8080:8080"
+    
 
 secrets:
   base.env:
