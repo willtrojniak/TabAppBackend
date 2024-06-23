@@ -8,6 +8,8 @@ import (
 )
 
 type UserStore interface {
+  // Create user attempts to create a new user for the given email and returns their uniquely assigned Id.
+  // If a user with the given email already exists, their user Id should be returned.
   CreateUser(context context.Context, user *UserCreate) (*uuid.UUID, error)
 }
 

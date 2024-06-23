@@ -9,17 +9,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type store struct {
+type pgxstore struct {
   pool *pgxpool.Pool;
 } 
 
-func NewStore(pool *pgxpool.Pool) *store {
-  return &store{
+func NewPGXStore(pool *pgxpool.Pool) *pgxstore {
+  return &pgxstore{
     pool: pool,
   };
 }
 
-func (s *store) CreateUser(context context.Context, data *types.UserCreate) (*uuid.UUID, error) {
+func (s *pgxstore) CreateUser(context context.Context, data *types.UserCreate) (*uuid.UUID, error) {
   row := s.pool.QueryRow(context, `
     INSERT INTO users (id, email, name) VALUES ($1, $2, $3) ON CONFLICT (email) DO UPDATE
       SET name = excluded.name RETURNING (id)`, uuid.New(), data.Email, data.Name);

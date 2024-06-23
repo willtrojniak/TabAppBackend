@@ -25,16 +25,15 @@ func NewAPIServer(addr string, pool *pgxpool.Pool) *APIServer {
 }
 
 func (s *APIServer) Run() error {
+
+  authHandler := auth.NewHandler(user.NewPGXStore(s.pool).CreateUser);
+  userHandler := user.NewHandler(user.NewPGXStore(s.pool), authHandler);
+
   router := http.NewServeMux()
-
-  authHandler := auth.NewHandler(user.NewStore(s.pool));
-  authHandler.RegisterRoutes(router);
-
   v1 := http.NewServeMux();
   
-  userHandler := user.NewHandler(authHandler);
+  authHandler.RegisterRoutes(router);
   userHandler.RegisterRoutes(v1);
-
 
   router.Handle("/api/v1/", http.StripPrefix("/api/v1", authHandler.RequireAuth(v1)));
   return http.ListenAndServe(s.addr, WithMiddleware(RequestLoggerMiddleware)(router));

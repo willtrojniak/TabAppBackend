@@ -1,10 +1,11 @@
 package auth
 
 import (
-	"fmt"
+	"context"
 	"net/http"
 
 	"github.com/WilliamTrojniak/TabAppBackend/env"
+	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
@@ -20,13 +21,13 @@ const (
 
 type Handler struct{
   store sessions.Store
-  userStore types.UserStore
+  createUser func(context.Context, *types.UserCreate) (*uuid.UUID, error)
 }
 
-func NewHandler(userStore types.UserStore) *Handler {
+func NewHandler(createUserFn func(context.Context, *types.UserCreate) (*uuid.UUID, error)) *Handler {
   return &Handler{
     store: gothic.Store, 
-    userStore: userStore,
+    createUser: createUserFn,
   };
 }
 
@@ -47,6 +48,32 @@ func init() {
   );
 }
 
+func (h *Handler) beginAuthorize(w http.ResponseWriter, r *http.Request, provider string) error {
+  r = r.WithContext(context.WithValue(context.Background(), "provider", provider));
+  gothic.BeginAuthHandler(w, r);
+
+  return nil;
+}
+
+func (h *Handler) authorize(w http.ResponseWriter, r *http.Request, provider string) error {
+  r = r.WithContext(context.WithValue(context.Background(), "provider", provider));
+  user, err := gothic.CompleteUserAuth(w, r);
+  if err != nil {
+    return services.NewInternalServiceError(err);
+  }
+
+  userUUID, err := h.createUser(context.Background(), &types.UserCreate{Email: user.Email, Name: user.Name});
+  if err != nil {
+    return services.NewInternalServiceError(err);
+  }
+  
+  if err := h.storeUserUUID(w, r, userUUID); err != nil {
+    return services.NewInternalServiceError(err);
+  }
+
+  return nil;
+}
+
 func (h *Handler) storeUserUUID(w http.ResponseWriter, r *http.Request, id *uuid.UUID) error {
 
   session, _ := h.store.Get(r, session_cookie);
@@ -54,7 +81,7 @@ func (h *Handler) storeUserUUID(w http.ResponseWriter, r *http.Request, id *uuid
   
   err := session.Save(r, w);
   if err != nil {
-    return err;
+    return services.NewInternalServiceError(err);
   }
   return nil;
 }
@@ -63,11 +90,11 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) error {
 
   session, err := h.store.Get(r, session_cookie);
   if err != nil {
-    return err;
+    return services.NewInternalServiceError(err);
   }
   session.Options.MaxAge = -1;
   if err := session.Save(r, w); err != nil {
-    return err;
+    return services.NewInternalServiceError(err);
   }
 
   return nil;
@@ -76,13 +103,14 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) error {
 func (h *Handler) GetUserSession(r *http.Request) (uuid.UUID, error) {
   session, err := h.store.Get(r, session_cookie);
   if err != nil {
-    return uuid.UUID{}, err;
+    return uuid.UUID{}, services.NewUnauthorizedServiceError(err);
   }
 
   u := session.Values["user"];
   if u == nil {
-    return uuid.UUID{}, fmt.Errorf("user is not authenticated! %v", u);
+    return uuid.UUID{}, services.NewUnauthorizedServiceError(err);
   }
+
   return u.(uuid.UUID), nil;
 }
 
@@ -90,7 +118,7 @@ func (h *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
   return func(w http.ResponseWriter, r *http.Request) {
     _, err := h.GetUserSession(r);
     if err != nil {
-      http.Error(w, "unauthorized", http.StatusUnauthorized);
+      services.HandleHttpError(w, err);
       return;
     }
     next.ServeHTTP(w, r);
