@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/gob"
 	"fmt"
 	"log"
 
 	"github.com/WilliamTrojniak/TabAppBackend/cmd/api"
 	"github.com/WilliamTrojniak/TabAppBackend/db"
 	"github.com/WilliamTrojniak/TabAppBackend/env"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-
 )
 
 
@@ -26,6 +27,7 @@ func main() {
     log.Fatal(err);
   }
   
+  gob.Register(uuid.UUID{});
   server := api.NewAPIServer(":3000", pg.Pool);
   if err := server.Run(); err != nil {
     log.Fatal(err);

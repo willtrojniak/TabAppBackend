@@ -13,10 +13,6 @@ type Handler struct{
   
 }
 
-type Test struct {
-  Name string `json:"name"`
-}
-
 func NewHandler(authHandler *auth.Handler) *Handler {
   return &Handler{
     authHandler: authHandler,
@@ -33,8 +29,8 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
     http.Error(w, "unauthorized", http.StatusUnauthorized);
     return;
   }
-  fmt.Println(user.RawData);
+  fmt.Println(user);
 
-  json.NewEncoder(w).Encode(Test{Name: user.Email});
+  json.NewEncoder(w).Encode(user);
   return;
 }

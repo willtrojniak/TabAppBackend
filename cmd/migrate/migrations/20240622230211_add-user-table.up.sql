@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id UUID NOT NULL,
-  name VARCHAR(255),
+  name VARCHAR(255) NOT NULL,
+  preferred_name VARCHAR(255),
   email VARCHAR(255) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 

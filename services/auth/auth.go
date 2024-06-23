@@ -6,6 +6,7 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/env"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
+	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
@@ -46,26 +47,43 @@ func init() {
   );
 }
 
-func (h *Handler) storeUserSession(w http.ResponseWriter, r *http.Request, user *goth.User) error {
+func (h *Handler) storeUserUUID(w http.ResponseWriter, r *http.Request, id *uuid.UUID) error {
 
   session, _ := h.store.Get(r, session_cookie);
-  session.Values["user"] = goth.User{RawData: user.RawData, Provider: user.Provider, Email: user.Email, Name: user.Name};
+  session.Values["user"] = id;
   
   err := session.Save(r, w);
-  return err;
+  if err != nil {
+    return err;
+  }
+  return nil;
 }
 
-func (h *Handler) GetUserSession(r *http.Request) (goth.User, error) {
+func (h *Handler) logout(w http.ResponseWriter, r *http.Request) error {
+
   session, err := h.store.Get(r, session_cookie);
   if err != nil {
-    return goth.User{}, err;
+    return err;
+  }
+  session.Options.MaxAge = -1;
+  if err := session.Save(r, w); err != nil {
+    return err;
+  }
+
+  return nil;
+}
+
+func (h *Handler) GetUserSession(r *http.Request) (uuid.UUID, error) {
+  session, err := h.store.Get(r, session_cookie);
+  if err != nil {
+    return uuid.UUID{}, err;
   }
 
   u := session.Values["user"];
   if u == nil {
-    return goth.User{}, fmt.Errorf("user is not authenticated! %v", u);
+    return uuid.UUID{}, fmt.Errorf("user is not authenticated! %v", u);
   }
-  return u.(goth.User), nil;
+  return u.(uuid.UUID), nil;
 }
 
 func (h *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
