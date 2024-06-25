@@ -14,9 +14,9 @@ type UserStore interface {
 }
 
 type UserCreate struct {
-  Email string `json:"email" db:"email"`
-  Name string `json:"name" db:"name"`
-  PreferredName *string `json:"preferred_name" db:"preferred_name"`
+  Email string `json:"email" db:"email" validate:"required,email,max=255"`
+  Name string `json:"name" db:"name" validate:"required,min=2,max=64"`
+  PreferredName *string `json:"preferred_name" db:"preferred_name" validate:"omitempty,min=2,max=64"`
 }
 
 type User struct {

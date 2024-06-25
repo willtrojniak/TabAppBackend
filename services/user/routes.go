@@ -11,12 +11,6 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
-  id, err := h.auth.GetUserSession(r);
-  if err != nil {
-    h.handleError(w, err);
-    return;
-  }
-
-  json.NewEncoder(w).Encode(id);
+  json.NewEncoder(w).Encode("Hello");
   return;
 }

@@ -27,8 +27,8 @@ func NewAPIServer(addr string, store *db.PgxStore) *APIServer {
 
 func (s *APIServer) Run() error {
 
-  authHandler := auth.NewHandler(s.store, services.HandleHttpError);
-  userHandler := user.NewHandler(s.store, services.HandleHttpError, authHandler);
+  userHandler := user.NewHandler(s.store, services.HandleHttpError);
+  authHandler := auth.NewHandler(userHandler, services.HandleHttpError);
 
   router := http.NewServeMux()
   v1 := http.NewServeMux();

@@ -51,6 +51,13 @@ func NewUnauthorizedServiceError(err error) *ServiceError {
   return NewServiceError(err, http.StatusUnauthorized, "Unauthorized.", nil);
 }
 
+type ValidationError struct{Value interface{}; Error string};
+type ValidationErrors map[string]ValidationError;
+
+func NewValidationServiceError(err error, parsingErrors interface{}) *ServiceError {
+  return NewServiceError(err, http.StatusBadRequest, "Problems parsing data.", parsingErrors)
+}
+
 func NewServiceError(err error, code int, msg string, data interface{}) *ServiceError {
   return &ServiceError{err: err, code: code, msg: msg, data: data};
 }
@@ -68,5 +75,5 @@ func (e *ServiceError) Data() interface{} {
 }
 
 func (e *ServiceError) Error() string {
-  return e.Error();
+  return e.err.Error();
 }

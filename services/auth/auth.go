@@ -2,10 +2,12 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/WilliamTrojniak/TabAppBackend/env"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
+	"github.com/WilliamTrojniak/TabAppBackend/services/user"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
@@ -22,14 +24,14 @@ const (
 type Handler struct{
   store sessions.Store
   handleError services.HTTPErrorHandler;
-  userStore types.UserStore;
+  userHandler *user.Handler;
 }
 
-func NewHandler(userStore types.UserStore, handleError services.HTTPErrorHandler) *Handler {
+func NewHandler(userHandler *user.Handler, handleError services.HTTPErrorHandler) *Handler {
   return &Handler{
     store: gothic.Store, 
     handleError: handleError,
-    userStore: userStore,
+    userHandler: userHandler,
   };
 }
 
@@ -64,8 +66,9 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request, provider str
     return services.NewInternalServiceError(err);
   }
 
-  userUUID, err := h.userStore.CreateUser(context.Background(), &types.UserCreate{Email: user.Email, Name: user.Name});
+  userUUID, err := h.userHandler.CreateUser(context.Background(), &types.UserCreate{Email: user.Email, Name: user.Name});
   if err != nil {
+    fmt.Printf("%v\n", err);
     return services.NewInternalServiceError(err);
   }
   
@@ -126,3 +129,4 @@ func (h *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
     next.ServeHTTP(w, r);
   }
 }
+
