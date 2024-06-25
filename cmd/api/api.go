@@ -3,32 +3,32 @@ package api
 import (
 	"net/http"
 
+	"github.com/WilliamTrojniak/TabAppBackend/db"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
 	"github.com/WilliamTrojniak/TabAppBackend/services/user"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type APIServer struct {
   addr string
-  pool *pgxpool.Pool
+  store *db.PgxStore
 }
 
 type Handler interface {
   RegisterRoutes(http.ServeMux);
 }
 
-func NewAPIServer(addr string, pool *pgxpool.Pool) *APIServer {
+func NewAPIServer(addr string, store *db.PgxStore) *APIServer {
   return &APIServer{
     addr: addr,
-    pool: pool,
+    store: store,
   };
 }
 
 func (s *APIServer) Run() error {
 
-  authHandler := auth.NewHandler(user.NewPGXStore(s.pool), services.HandleHttpError);
-  userHandler := user.NewHandler(user.NewPGXStore(s.pool), services.HandleHttpError, authHandler);
+  authHandler := auth.NewHandler(s.store, services.HandleHttpError);
+  userHandler := user.NewHandler(s.store, services.HandleHttpError, authHandler);
 
   router := http.NewServeMux()
   v1 := http.NewServeMux();

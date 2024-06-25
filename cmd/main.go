@@ -28,7 +28,7 @@ func main() {
   }
   
   gob.Register(uuid.UUID{});
-  server := api.NewAPIServer(":3000", pg.Pool);
+  server := api.NewAPIServer(":3000", pg);
   if err := server.Run(); err != nil {
     log.Fatal(err);
   }
