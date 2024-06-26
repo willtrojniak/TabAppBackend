@@ -1,7 +1,7 @@
 package api
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 )
 
@@ -18,7 +18,7 @@ func WithMiddleware(middlewares ...Middleware) Middleware {
 
 func RequestLoggerMiddleware(next http.Handler) http.HandlerFunc {
   return func(w http.ResponseWriter, r *http.Request) {
-    log.Printf("method %s, path: %s", r.Method, r.URL.Path);
+    slog.Info("API Endpoint", "method", r.Method, "path", r.URL.Path);
     next.ServeHTTP(w, r);
   }
 }

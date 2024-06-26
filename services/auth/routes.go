@@ -9,6 +9,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
   router.HandleFunc("GET /auth/{provider}/callback", h.handleAuthCallback);
   router.HandleFunc("GET /auth/{provider}", h.handleAuth);
   router.HandleFunc("GET /logout", h.handleLogout);
+  h.logger.Info("Registered auth routes");
 }
 
 func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {

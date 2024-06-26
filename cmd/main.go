@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"log"
+	"log/slog"
 
 	"github.com/WilliamTrojniak/TabAppBackend/cmd/api"
 	"github.com/WilliamTrojniak/TabAppBackend/db"
@@ -14,7 +15,14 @@ import (
 )
 
 
+var logLevels = map[string]slog.Level{
+  "dev": slog.LevelDebug,
+}
+
 func main() {
+
+
+  slog.SetLogLoggerLevel(logLevels[env.DEV]);
 
   databaseURL := fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable", env.Envs.POSTGRES_USER, env.Envs.POSTGRES_PASSWORD, env.Envs.POSTGRES_HOST, env.Envs.POSTGRES_PORT, env.Envs.POSTGRES_DB);
   pgConfig, err := pgxpool.ParseConfig(databaseURL);

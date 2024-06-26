@@ -1,8 +1,8 @@
 package env
 
 import (
-	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -38,7 +38,7 @@ func getConfig() config {
   }
 
   if err := godotenv.Load(filepath.Join(envDir, EXT_ENVIRONMENT + ".env")); err == nil {
-    fmt.Printf("Running environment %v\n", EXT_ENVIRONMENT)
+    slog.Info("Loaded environment", "EXT_ENVIRONMENT", EXT_ENVIRONMENT);
   }
       
   configData := config{};

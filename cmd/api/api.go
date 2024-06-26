@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/WilliamTrojniak/TabAppBackend/db"
@@ -27,8 +28,8 @@ func NewAPIServer(addr string, store *db.PgxStore) *APIServer {
 
 func (s *APIServer) Run() error {
 
-  userHandler := user.NewHandler(s.store, services.HandleHttpError);
-  authHandler := auth.NewHandler(userHandler, services.HandleHttpError);
+  userHandler := user.NewHandler(s.store, services.HandleHttpError, slog.Default());
+  authHandler := auth.NewHandler(userHandler, services.HandleHttpError, slog.Default());
 
   router := http.NewServeMux()
   v1 := http.NewServeMux();

@@ -2,7 +2,7 @@ package db
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 
 	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/google/uuid"
@@ -16,9 +16,9 @@ func (s *PgxStore) CreateUser(context context.Context, data *types.UserCreate) (
   id := uuid.UUID{};
   err := row.Scan(&id);
   if err != nil {
+    slog.Warn("Error creating user.", "err", err.Error(), "email", data.Email, "name", data.Name);
     return &uuid.UUID{}, err;
   }
-  fmt.Printf("Scanned: %v\n", id.String());
 
   return &id, nil;
 }

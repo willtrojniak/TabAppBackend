@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/WilliamTrojniak/TabAppBackend/env"
@@ -22,13 +22,15 @@ const (
 )
 
 type Handler struct{
+  logger *slog.Logger;
   store sessions.Store
   handleError services.HTTPErrorHandler;
   userHandler *user.Handler;
 }
 
-func NewHandler(userHandler *user.Handler, handleError services.HTTPErrorHandler) *Handler {
+func NewHandler(userHandler *user.Handler, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
   return &Handler{
+    logger: logger,
     store: gothic.Store, 
     handleError: handleError,
     userHandler: userHandler,
@@ -63,12 +65,12 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request, provider str
   r = r.WithContext(context.WithValue(context.Background(), "provider", provider));
   user, err := gothic.CompleteUserAuth(w, r);
   if err != nil {
+    h.logger.Error("Error while authenticating with goth");
     return services.NewInternalServiceError(err);
   }
 
   userUUID, err := h.userHandler.CreateUser(context.Background(), &types.UserCreate{Email: user.Email, Name: user.Name});
   if err != nil {
-    fmt.Printf("%v\n", err);
     return services.NewInternalServiceError(err);
   }
   
@@ -86,6 +88,7 @@ func (h *Handler) storeUserUUID(w http.ResponseWriter, r *http.Request, id *uuid
   
   err := session.Save(r, w);
   if err != nil {
+    h.logger.Error("Error while storing userUUID");
     return services.NewInternalServiceError(err);
   }
   return nil;
