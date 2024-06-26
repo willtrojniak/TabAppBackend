@@ -7,7 +7,6 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/env"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/services/user"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
@@ -21,20 +20,25 @@ const (
   session_cookie = "user_session"
 )
 
+type CreateUserFn func(context context.Context, user *types.UserCreate) (*uuid.UUID, error)
+
 type Handler struct{
   logger *slog.Logger;
   store sessions.Store
   handleError services.HTTPErrorHandler;
-  userHandler *user.Handler;
+  createUser CreateUserFn;
 }
 
-func NewHandler(userHandler *user.Handler, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
+func NewHandler(handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
   return &Handler{
-    logger: logger,
     store: gothic.Store, 
     handleError: handleError,
-    userHandler: userHandler,
+    logger: logger,
   };
+}
+
+func (h *Handler) SetCreateUserFn(fn CreateUserFn) {
+  h.createUser = fn;
 }
 
 func init() {
@@ -69,7 +73,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request, provider str
     return services.NewInternalServiceError(err);
   }
 
-  userUUID, err := h.userHandler.CreateUser(context.Background(), &types.UserCreate{Email: user.Email, Name: user.Name});
+  userUUID, err := h.createUser(context.Background(), &types.UserCreate{Email: user.Email, Name: user.Name});
   if err != nil {
     return services.NewInternalServiceError(err);
   }
