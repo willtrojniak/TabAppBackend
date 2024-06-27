@@ -19,6 +19,7 @@ type config struct {
   POSTGRES_HOST string
   POSTGRES_PORT string
   POSTGRES_DB string
+  REDIS_ADDR string
 }
 
 var Envs = getConfig();

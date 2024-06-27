@@ -28,6 +28,8 @@ services:
     secrets:
       - postgres_user
       - postgres_password
+  redis:
+    image: redis:alpine3.20
 
   adminer:
     profiles:
@@ -38,6 +40,14 @@ services:
     restart: always
     ports:
       - "8080:8080"
+  redisinsight:
+    profiles:
+      - debug
+    depends_on:
+      - redis
+    image: redislabs/redisinsight
+    ports:
+      - "5540:5540"
     
 
 secrets:

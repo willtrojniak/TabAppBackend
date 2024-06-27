@@ -1,8 +1,12 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
+
+	"github.com/WilliamTrojniak/TabAppBackend/services"
+	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 )
 
 type Middleware func(http.Handler) http.HandlerFunc
@@ -23,3 +27,15 @@ func RequestLoggerMiddleware(next http.Handler) http.HandlerFunc {
   }
 }
 
+func RequireSession(s *sessions.SessionManager, h services.HTTPErrorHandler) Middleware {
+  return func (next http.Handler) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+      _, err := s.GetSession(context.Background(), r);
+      if err != nil {
+        h(w, err);
+        return;
+      }
+      next.ServeHTTP(w, r);
+    }
+  }
+}
