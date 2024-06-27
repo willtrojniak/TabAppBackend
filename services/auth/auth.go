@@ -31,7 +31,7 @@ type Handler struct{
 }
 
 func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.SessionManager, logger *slog.Logger) (*Handler, error) {
-  provider, err := oidc.NewProvider(context.Background(), "https://accounts.google.com");
+  provider, err := oidc.NewProvider(context.TODO(), "https://accounts.google.com");
   if err != nil {
     return nil, err;
   }
@@ -85,7 +85,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
   }
 
   // Exchange the code for a token
-  oauth2Token, err := h.config.Exchange(context.Background(), r.URL.Query().Get("code"));
+  oauth2Token, err := h.config.Exchange(r.Context(), r.URL.Query().Get("code"));
   if err != nil {
     return services.NewInternalServiceError(err);
   }
@@ -100,7 +100,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
   oidcConfig := &oidc.Config{ClientID: env.Envs.OAUTH2_GOOGLE_CLIENT_ID};
   verifier := h.provider.Verifier(oidcConfig);
 
-  idToken, err := verifier.Verify(context.Background(), rawIdToken);
+  idToken, err := verifier.Verify(r.Context(), rawIdToken);
   if err != nil {
     return services.NewInternalServiceError(err);
   }
@@ -123,7 +123,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
 
   }
 
-  userInfo, err := h.provider.UserInfo(context.Background(), oauth2.StaticTokenSource(oauth2Token));
+  userInfo, err := h.provider.UserInfo(r.Context(), oauth2.StaticTokenSource(oauth2Token));
   if err != nil {
     return services.NewInternalServiceError(err);
   }
@@ -133,12 +133,12 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
   }
 
   // Add the user to the database if not already
-  err = h.createUser(context.Background(), &types.UserCreate{Id: claims.Sub, Email: claims.Email, Name: claims.Name});
+  err = h.createUser(r.Context(), &types.UserCreate{Id: claims.Sub, Email: claims.Email, Name: claims.Name});
   if err != nil {
     return services.NewInternalServiceError(err);
   }
   
-  _, err = h.sessionManager.CreateSession(context.Background(), w, r, claims.Sub);
+  _, err = h.sessionManager.CreateSession(w, r, claims.Sub);
   if err != nil {
     return err;
   }
@@ -148,7 +148,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) error {
 
-  err := h.sessionManager.ClearSession(context.Background(), w, r);
+  err := h.sessionManager.ClearSession(w, r);
   if err != nil {
     return err;
   }

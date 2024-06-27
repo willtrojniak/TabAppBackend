@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 
@@ -30,7 +29,7 @@ func RequestLoggerMiddleware(next http.Handler) http.HandlerFunc {
 func RequireSession(s *sessions.SessionManager, h services.HTTPErrorHandler) Middleware {
   return func (next http.Handler) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-      session, err := s.GetSession(context.Background(), r);
+      session, err := s.GetSession(r);
       if err != nil {
         h(w, err);
         return;

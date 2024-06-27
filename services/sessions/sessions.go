@@ -1,7 +1,6 @@
 package sessions
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -49,8 +48,7 @@ func New(store *redis.Client, expiryTime time.Duration, logger *slog.Logger) *Se
 }
 
 
-//TODO: Should context just be the request's context
-func (s *SessionManager) CreateSession(c context.Context, w http.ResponseWriter, r *http.Request, userId string) (*SessionData, error ){
+func (s *SessionManager) CreateSession(w http.ResponseWriter, r *http.Request, userId string) (*SessionData, error ){
   sessionID, err := randString(32);
   if err != nil {
     return nil, services.NewInternalServiceError(err);
@@ -70,14 +68,14 @@ func (s *SessionManager) CreateSession(c context.Context, w http.ResponseWriter,
   currentSession, err := r.Cookie(session_cookie);
   if err == nil {
     // i.e. The client has a previous session
-    err := s.store.Del(c, currentSession.Value).Err();
+    err := s.store.Del(r.Context(), currentSession.Value).Err();
     if err != nil {
       s.logger.Warn("Attempt to delete old session failed", "err", err);
     }
   }
 
 
-  if err := s.store.Set(c, sessionID, jsonString, s.expirationTime).Err(); err != nil {
+  if err := s.store.Set(r.Context(), sessionID, jsonString, s.expirationTime).Err(); err != nil {
     s.logger.Error("Session Manager could not save session to redis");
     return nil, services.NewInternalServiceError(err);
   }
@@ -89,7 +87,7 @@ func (s *SessionManager) CreateSession(c context.Context, w http.ResponseWriter,
   return &sessionData, nil;
 }
 
-func (s *SessionManager) GetSession(c context.Context, r *http.Request) (*SessionData, error) {
+func (s *SessionManager) GetSession(r *http.Request) (*SessionData, error) {
   // TODO: Maybe just use the request's context?
   sessionCookie, err := r.Cookie(session_cookie);
   if err != nil {
@@ -97,7 +95,7 @@ func (s *SessionManager) GetSession(c context.Context, r *http.Request) (*Sessio
   }
 
   sessionId := sessionCookie.Value;
-  jsonString, err := s.store.Get(c, sessionId).Bytes();
+  jsonString, err := s.store.Get(r.Context(), sessionId).Bytes();
   if err != nil {
     return nil, services.NewUnauthorizedServiceError(err);
   }
@@ -118,9 +116,9 @@ func (s *SessionManager) GetSession(c context.Context, r *http.Request) (*Sessio
   return &sessionData, nil;
 }
 
-func (s *SessionManager) ClearSession(c context.Context, w http.ResponseWriter, r *http.Request) error {
+func (s *SessionManager) ClearSession(w http.ResponseWriter, r *http.Request) error {
   // TODO: Maybe just use the request's context?
-  _, err := s.CreateSession(c, w, r, ""); // Create an anonymous session
+  _, err := s.CreateSession(w, r, ""); // Create an anonymous session
   if err != nil {
     return err;
   }
@@ -132,11 +130,11 @@ func (s *SessionManager) RequireCSRFHeader(h services.HTTPErrorHandler) func(htt
     return func(w http.ResponseWriter, r *http.Request) {
       
       // Check for an active session
-      session, err := s.GetSession(context.Background(), r);
+      session, err := s.GetSession(r);
       if err != nil {
 
         // If there is no session, create an unauthenticated session
-        session, err = s.CreateSession(context.Background(), w, r, ""); // Empty string for no user id --> unauthenticated
+        session, err = s.CreateSession(w, r, ""); // Empty string for no user id --> unauthenticated
         if err != nil {
           s.logger.Error("Failed to create anonymous session", "error", err);
           h(w, services.NewInternalServiceError(err));
