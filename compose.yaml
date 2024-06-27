@@ -38,6 +38,14 @@ services:
     restart: always
     ports:
       - "8080:8080"
+  swagger:
+    image: swaggerapi/swagger-ui:latest
+    ports:
+      - "4200:8080"
+    volumes:
+      - "./:/src"
+    environment:
+      SWAGGER_JSON: "/src/api.yaml"
     
 
 secrets:

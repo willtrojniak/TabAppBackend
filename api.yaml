@@ -1,0 +1,789 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.1/schema.yaml
+
+openapi: 3.1.0
+info:
+  title: Tab App
+  description: Tab App for tracking shop tabs
+  version: '0.1.0'
+servers:
+  - url: http://localhost:3000/api/v1
+tags:
+  - name: shop
+  - name: payment method
+  - name: category
+  - name: item
+  - name: variant
+  - name: substitution
+  - name: tab
+  - name: order
+paths:
+  /tests:
+    get:
+      summary: test
+
+  /paymentmethods:
+    get:
+      tags:
+        - payment method
+      summary: Get supported payment methods
+      operationId: getPaymentMethods
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethod'
+        '401':
+          description: unauthenticated
+  /shops:
+    post:
+      tags:
+        - shop
+      summary: Create a new shop
+      description: Create a new shop
+      operationId: createShop
+      requestBody:
+        description: Create a new shop
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShopCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShopCreate'
+      responses:
+        '201':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shop'
+        '400':
+          description: invalid input
+        '401':
+          description: unauthenticated
+        '409':
+          description: conflict with existing data
+        '422':
+          description: validation exception
+    get:
+      tags:
+        - shop
+      summary: Query shop details
+      operationId: queryShops
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Shop'
+        '401':
+          description: unauthenticated
+  /shops/{shopId}:
+    get:
+      tags:
+        - shop
+      summary: Get a shop's details
+      operationId: getShopDetails
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to get details for
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shop'
+        '401':
+          description: unauthenticated
+        '404':
+          description: not found 
+        '422':
+          description: validation exception
+    put:
+      tags:
+        - shop
+      summary: Update shop configuration
+      operationId: updateShop
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShopCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Shop'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shop'
+        '401':
+          description: unauthenticated
+        '403':
+          description: unauthorized
+        '404':
+          description: not found 
+        '409':
+          description: conflict with existing data
+        '422':
+          description: validation exception
+    delete:
+      tags:
+        - shop
+      summary: Delete shop by Id
+      operationId: deleteShop
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: successful operation
+        '401':
+          description: unauthenticated
+        '403':
+          description: unauthorized
+        '404':
+          description: not found 
+        '422':
+          description: validation exception
+  /shops/{shopId}/categories:
+    post:
+      tags:
+        - category 
+      summary: Create a new item category
+      operationId: createCategory
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          description: unauthenticated
+        '403':
+          description: unauthorized
+        '404':
+          description: not found 
+        '409':
+          description: conflict with existing data
+        '422':
+          description: validation exception
+    get:
+      tags:
+        - category 
+      summary: Get a shop's item categories
+      operationId: getCategories 
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '401':
+          description: unauthenticated
+        '404':
+          description: not found 
+        '422':
+          description: validation exception
+    put:
+      tags:
+        - category 
+      summary: Update ordering of shop item categories
+      operationId: updateCategoryOrder
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Id'
+          application/x-www-form-urlencoded:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '401':
+          description: unauthenticated
+        '403':
+          description: unauthorized
+        '404':
+          description: not found 
+        '409':
+          description: conflict with existing data
+        '422':
+          description: validation exception
+  /shops/{shopId}/categories/{categoryId}:
+    put:
+      tags:
+        - category
+      summary: Update the items associated with a shop's item category
+      operationId: updateCategory
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+        - name: categoryId 
+          in: path
+          description: ID of category to update
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+        '401':
+          description: unauthenticated
+        '403':
+          description: unauthorized
+        '404':
+          description: not found 
+        '409':
+          description: conflict with existing data
+        '422':
+          description: validation exception
+    delete:
+      tags:
+        - category
+      summary: Delete category by Id
+      operationId: deleteCategory
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+        - name: categoryId 
+          in: path
+          description: ID of category to update
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: successful operation
+        '401':
+          description: unauthenticated
+        '403':
+          description: unauthorized
+        '404':
+          description: not found 
+        '422':
+          description: validation exception
+  /shops/{shopId}/items:    
+    post:
+      tags:
+        - item
+      summary: Create a new item
+      operationId: createItem
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ItemCreate'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '401':
+          description: unauthenticated
+        '403':
+          description: unauthorized
+        '404':
+          description: not found 
+        '409':
+          description: conflict with existing data
+        '422':
+          description: validation exception
+    get:
+      tags:
+        - item
+      summary: Get a shop's items
+      operationId: getItems
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '401':
+          description: unauthenticated
+        '404':
+          description: not found 
+        '422':
+          description: validation exception
+  /shops/{shopId}/items/{itemId}:    
+    put:
+      tags:
+        - item
+      summary: Update item configuration
+      operationId: updateItem
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+        - name: itemId
+          in: path
+          description: ID of item to update
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ItemCreate'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemDetails'
+        '401':
+          description: unauthenticated
+        '403':
+          description: unauthorized
+        '404':
+          description: not found 
+        '409':
+          description: conflict with existing data
+        '422':
+          description: validation exception
+    delete:
+      tags:
+        - item
+      summary: Delete item by id
+      operationId: deleteItem
+      parameters:
+        - name: shopId
+          in: path
+          description: ID of shop to update
+          required: true
+          schema:
+            type: integer
+        - name: itemId 
+          in: path
+          description: ID of category to update
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: successful operation
+        '401':
+          description: unauthenticated
+        '403':
+          description: unauthorized
+        '404':
+          description: not found 
+        '422':
+          description: validation exception
+  /shops/{shopId}/items/{itemId}/variantgroups:
+    post:
+      tags:
+        - variant
+      summary: Create a new variant group for an item with variants 
+      # TODO: Fill out
+  /shops/{shopId}/items/{itemId}/variantgroups/{groupId}:
+    put:
+      tags:
+        - variant
+      summary: Update ordering of options of a variant group by id
+      # TODO: Fill out
+    delete:
+      tags:
+        - variant
+      summary: Delete item variant group by id 
+      # TODO: Fill out
+  /shops/{shopId}/items/{itemId}/variantgroups/{groupId}/variants:
+    post:
+      tags:
+        - variant
+      summary: Create a new variant for a variant group by id
+      # TODO: Fill out
+  /shops/{shopId}/items/{itemId}/variantgroups/{groupId}/variants/{variantId}:
+    put:
+      tags:
+        - variant
+      summary: Update variant configuration by id
+      # TODO: Fill out
+    delete:
+      tags:
+        - variant
+      summary: Delete item variant by id 
+      # TODO: Fill out
+  /shops/{shopId}/substitiongroups:
+    post:
+      tags:
+        - substitution
+      summary: Create a new substitution group for a shop by id
+      # TODO: Fill out
+  /shops/{shopId}/substitiongroups/{groupId}:
+    put:
+      tags:
+        - substitution 
+      summary: Update ordering of options of a substitution group by id
+      # TODO: Fill out
+    delete:
+      tags:
+        - substitution
+      summary: Delete item substitution group by id 
+      # TODO: Fill out
+  /shops/{shopId}/tabs:
+    post:
+      tags:
+        - tab
+      summary: Create a new tab for a shop by id
+      # TODO: Fill out
+    get:
+      tags:
+        - tab
+      summary: Query a shop's tabs
+      # TODO: Fill out
+  /shops/{shopId}/tabs/{tabId}:
+    get:
+      tags:
+        - tab
+      summary: Get a tab's details by id
+      # TODO: Fill out
+    delete:
+      tags:
+        - tab
+      summary: Delete a tab by id 
+      # TODO: Fill out
+  /shops/{shopId}/tabs/{tabId}/approve:
+    post:
+      tags:
+        - tab
+      summary: Mark a tab approved 
+      # TODO: Fill out
+  /shops/{shopId}/tabs/{tabId}/close:
+    post:
+      tags:
+        - tab
+      summary: Mark a tab closed 
+      # TODO: Fill out
+  /shops/{shopId}/tabs/{tabId}/orders/add:
+    post:
+      tags:
+        - order 
+      summary: Add an order to the tab
+      # TODO: Fill out
+  /shops/{shopId}/tabs/{tabId}/orders/remove:
+    post:
+      tags:
+        - order 
+      summary: Remove an order from the tab
+      # TODO: Fill out
+    
+
+components:
+  schemas:
+    ShopCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64 
+          examples: ["Coffee Club", "Small World", "Sacred"]
+        paymentMethods:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentMethod'
+          uniqueItems: true
+      required:
+        - ownerId
+        - name
+        - paymentMethods
+    Shop:
+      allOf:
+        - $ref: '#/components/schemas/IdObject'
+        - $ref: '#/components/schemas/ShopCreate'
+    PaymentMethod:
+      type: string
+      enum:
+        - In person
+        - Chartstring
+    CategoryCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          examples: ["Specialty Drinks"]
+        itemIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Id'
+      required:
+        - name
+        - itemIds 
+    Category:
+      allOf:
+        - $ref: '#/components/schemas/IdObject'
+        - $ref: '#/components/schemas/CategoryCreate'
+    ItemCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          examples: ["Latte"]
+        basePrice:
+          $ref: '#/components/schemas/Price'
+        categoryIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Id'
+        variantgroupIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Id'
+        substitutiongroupIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Id'
+        addonIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Id'
+      required:
+        - name
+        - basePrice
+        - categories
+        - variantgroupIds
+        - substitutiongroupIds
+        - addonIds
+    Item:
+      allOf:
+        - $ref: '#/components/schemas/IdObject'
+        - type: object
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 64
+              examples: ["Oat Milk"]
+            basePrice:
+              $ref: '#/components/schemas/Price'
+          required:
+            - name
+            - basePrice
+    ItemDetails:
+      allOf:
+        - $ref: '#/components/schemas/Item'
+        - type: object
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 64
+              examples: ["Latte"]
+            basePrice:
+              $ref: '#/components/schemas/Price'
+            categoryIds:
+              type: array
+              items:
+                $ref: '#/components/schemas/Id'
+            variantgroups:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    $ref: '#/components/schemas/Id'
+                  name:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                    examples: ["Sizes"]
+                  variants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Variant'
+                required:
+                  - id
+                  - name
+                  - variants
+            substitutiongroups:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    $ref: '#/components/schemas/Id'
+                  name:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                    examples: ["Alt Milk"]
+                  options:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Item'
+                required:
+                  - id
+                  - name
+                  - variants
+            addons:
+              type: array
+              items:
+                $ref: '#/components/schemas/Item'
+          required:
+            - categoryIds
+            - variantgroups
+            - substitutiongroups
+            - addons
+    VariantCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          examples: ["Small"]
+        price:
+          $ref: '#/components/schemas/Price'
+      required:
+        - name
+        - price
+    Variant:
+      allOf:
+        - $ref: '#/components/schemas/IdObject'
+        - $ref: '#/components/schemas/VariantCreate'
+    Price:
+      type: number
+      minimum: 0
+      multipleOf: 0.01
+      examples: [1.55]
+    Id:
+      type: integer
+      format: int32
+      examples: [4,7,100]
+    IdObject:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+      required:
+        - id
+  securitySchemes:
+    auth:
+      type: apiKey
+      in: cookie
+      name: user_session
+            
+
+      
+  
+
+
+
