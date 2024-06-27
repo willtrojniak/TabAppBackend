@@ -7,20 +7,18 @@ import (
 )
 
 type PgxStore struct {
-  pool *pgxpool.Pool
-  
+	pool *pgxpool.Pool
 }
 
 func NewPostgresStorage(context context.Context, config *pgxpool.Config) (*PgxStore, error) {
-  conn, err := pgxpool.New(context, config.ConnString());
-  if err != nil {
-    return &PgxStore{}, err;
-  }
+	conn, err := pgxpool.New(context, config.ConnString())
+	if err != nil {
+		return &PgxStore{}, err
+	}
 
-  pg := &PgxStore{
-    pool: conn,
-  }
+	pg := &PgxStore{
+		pool: conn,
+	}
 
-  return pg, nil;
+	return pg, nil
 }
-

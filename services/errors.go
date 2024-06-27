@@ -6,74 +6,76 @@ import (
 )
 
 type HTTPError interface {
-  Data() interface{}
-  Msg() string 
-  StatusCode() int
-  error
+	Data() interface{}
+	Msg() string
+	StatusCode() int
+	error
 }
 
 func writeHttpError(w http.ResponseWriter, e HTTPError) {
-  w.WriteHeader(e.StatusCode());
-  json.NewEncoder(w).Encode(
-    struct {
-      Msg string `json:"msg"`
-      Data interface{} `json:"data"`
-    }{Msg: e.Msg(), Data: e.Data()});
-  
+	w.WriteHeader(e.StatusCode())
+	json.NewEncoder(w).Encode(
+		struct {
+			Msg  string      `json:"msg"`
+			Data interface{} `json:"data"`
+		}{Msg: e.Msg(), Data: e.Data()})
+
 }
 
-type HTTPErrorHandler func(http.ResponseWriter, error);
+type HTTPErrorHandler func(http.ResponseWriter, error)
 
 func HandleHttpError(w http.ResponseWriter, err error) {
-  switch err := err.(type) {
-  case HTTPError:
-    writeHttpError(w, err);
-    return;
-  default:
-    writeHttpError(w, NewInternalServiceError(err));
-    return;
-  }
+	switch err := err.(type) {
+	case HTTPError:
+		writeHttpError(w, err)
+		return
+	default:
+		writeHttpError(w, NewInternalServiceError(err))
+		return
+	}
 }
 
 type ServiceError struct {
-  data interface{}
-  msg string 
-  code int
-  err error
+	data interface{}
+	msg  string
+	code int
+	err  error
 }
 
 func NewInternalServiceError(err error) *ServiceError {
-  return NewServiceError(err, http.StatusInternalServerError, "Internal server error.", nil);
+	return NewServiceError(err, http.StatusInternalServerError, "Internal server error.", nil)
 }
-
 
 func NewUnauthorizedServiceError(err error) *ServiceError {
-  return NewServiceError(err, http.StatusUnauthorized, "Unauthorized.", nil);
+	return NewServiceError(err, http.StatusUnauthorized, "Unauthorized.", nil)
 }
 
-type ValidationError struct{Value interface{}; Error string};
-type ValidationErrors map[string]ValidationError;
+type ValidationError struct {
+	Value interface{}
+	Error string
+}
+type ValidationErrors map[string]ValidationError
 
 func NewValidationServiceError(err error, parsingErrors interface{}) *ServiceError {
-  return NewServiceError(err, http.StatusBadRequest, "Problems parsing data.", parsingErrors)
+	return NewServiceError(err, http.StatusBadRequest, "Problems parsing data.", parsingErrors)
 }
 
 func NewServiceError(err error, code int, msg string, data interface{}) *ServiceError {
-  return &ServiceError{err: err, code: code, msg: msg, data: data};
+	return &ServiceError{err: err, code: code, msg: msg, data: data}
 }
 
 func (e *ServiceError) StatusCode() int {
-  return e.code;
+	return e.code
 }
 
 func (e *ServiceError) Msg() string {
-  return e.msg;
+	return e.msg
 }
 
 func (e *ServiceError) Data() interface{} {
-  return e.data;
+	return e.data
 }
 
 func (e *ServiceError) Error() string {
-  return e.err.Error();
+	return e.err.Error()
 }
