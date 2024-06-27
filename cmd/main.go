@@ -12,6 +12,7 @@ import (
 	"github.com/WilliamTrojniak/TabAppBackend/env"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 
@@ -34,9 +35,16 @@ func main() {
   if err != nil {
     log.Fatal(err);
   }
+
+  opts := redis.Options{
+    Addr: env.Envs.REDIS_ADDR,
+    Password: "",
+    DB: 0,
+  }
+  redis := redis.NewClient(&opts);
   
   gob.Register(uuid.UUID{});
-  server := api.NewAPIServer(":3000", pg);
+  server := api.NewAPIServer(":3000", pg, redis);
   if err := server.Run(); err != nil {
     log.Fatal(err);
   }

@@ -28,6 +28,8 @@ services:
     secrets:
       - postgres_user
       - postgres_password
+  redis:
+    image: redis:alpine3.20
 
   adminer:
     profiles:
@@ -46,6 +48,14 @@ services:
       - "./:/src"
     environment:
       SWAGGER_JSON: "/src/api.yaml"
+  redisinsight:
+    profiles:
+      - debug
+    depends_on:
+      - redis
+    image: redislabs/redisinsight
+    ports:
+      - "5540:5540"
     
 
 secrets:

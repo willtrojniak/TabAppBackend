@@ -13,9 +13,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 }
 
 func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
-  provider := r.PathValue("provider");
-
-  err := h.authorize(w, r, provider);
+  err := h.authorize(w, r);
   if err != nil {
     h.handleError(w, err);
     return;
@@ -28,8 +26,7 @@ func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleAuth(w http.ResponseWriter, r *http.Request) {
-  provider := r.PathValue("provider");
-  if err := h.beginAuthorize(w, r, provider); err != nil {
+  if err := h.beginAuthorize(w, r); err != nil {
     h.handleError(w, err);
     return;
   }

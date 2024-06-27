@@ -2,138 +2,176 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/WilliamTrojniak/TabAppBackend/env"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
+	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
-	"github.com/gorilla/sessions"
-	"github.com/markbates/goth"
-	"github.com/markbates/goth/gothic"
-	"github.com/markbates/goth/providers/google"
+	"github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
 )
 
-const (
-  maxAge = 86400 * 30 // 30 days
-  session_cookie = "user_session"
-)
 
-type CreateUserFn func(context context.Context, user *types.UserCreate) (*uuid.UUID, error)
+type CreateUserFn func(context context.Context, user *types.UserCreate) (error)
 
 type Handler struct{
   logger *slog.Logger;
-  store sessions.Store
   handleError services.HTTPErrorHandler;
   createUser CreateUserFn;
+  config oauth2.Config;
+  provider *oidc.Provider;
+  sessionManager *sessions.SessionManager;
 }
 
-func NewHandler(handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
+func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.SessionManager, logger *slog.Logger) (*Handler, error) {
+  provider, err := oidc.NewProvider(context.Background(), "https://accounts.google.com");
+  if err != nil {
+    return nil, err;
+  }
+  config := oauth2.Config{
+    ClientID: env.Envs.OAUTH2_GOOGLE_CLIENT_ID,
+    ClientSecret: env.Envs.OAUTH2_GOOGLE_CLIENT_SECRET,
+    Endpoint: provider.Endpoint(),
+    RedirectURL: "http://127.0.0.1:3000/auth/google/callback",
+    Scopes: []string{oidc.ScopeOpenID, "profile", "email"},
+  }
+
   return &Handler{
-    store: gothic.Store, 
     handleError: handleError,
     logger: logger,
-  };
+    provider: provider,
+    config: config,
+    sessionManager: sessionManager,
+  }, nil;
 }
 
 func (h *Handler) SetCreateUserFn(fn CreateUserFn) {
   h.createUser = fn;
 }
 
-func init() {
+func (h *Handler) beginAuthorize(w http.ResponseWriter, r *http.Request) error {
+  state, err := randString(16);
+  if err != nil {
+    return err;
+  }
+  nonce, err := randString(16);
+  if err != nil {
+    return err;
+  }
 
-  store := sessions.NewCookieStore([]byte(env.Envs.SESSION_SECRET));
-  store.MaxAge(maxAge);
-  store.Options.Path = "/"
-  store.Options.HttpOnly = true;
-  store.Options.Secure = true; // BREAKS IF FALSE
-
-  gothic.Store = store;
-
-  goth.UseProviders(
-    // TODO: Make URL dynamic
-    google.New(env.Envs.OAUTH2_GOOGLE_CLIENT_ID, env.Envs.OAUTH2_GOOGLE_CLIENT_SECRET, "http://127.0.0.1:3000/auth/google/callback",
-      "openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"),
-  );
-}
-
-func (h *Handler) beginAuthorize(w http.ResponseWriter, r *http.Request, provider string) error {
-  r = r.WithContext(context.WithValue(context.Background(), "provider", provider));
-  gothic.BeginAuthHandler(w, r);
+  setCallbackCookie(w, r, "state", state);
+  setCallbackCookie(w, r, "nonce", nonce);
+  http.Redirect(w, r, h.config.AuthCodeURL(state, oidc.Nonce(nonce)), http.StatusFound);
 
   return nil;
 }
 
-func (h *Handler) authorize(w http.ResponseWriter, r *http.Request, provider string) error {
-  r = r.WithContext(context.WithValue(context.Background(), "provider", provider));
-  user, err := gothic.CompleteUserAuth(w, r);
+func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
+  // Check that the CSRF token matches
+  state, err := r.Cookie("state");
   if err != nil {
-    h.logger.Error("Error while authenticating with goth");
     return services.NewInternalServiceError(err);
   }
 
-  userUUID, err := h.createUser(context.Background(), &types.UserCreate{Email: user.Email, Name: user.Name});
+  if r.URL.Query().Get("state") != state.Value {
+    return fmt.Errorf("State did not match");
+  }
+
+  // Exchange the code for a token
+  oauth2Token, err := h.config.Exchange(context.Background(), r.URL.Query().Get("code"));
+  if err != nil {
+    return services.NewInternalServiceError(err);
+  }
+
+  // Get the id token from the JWT
+  rawIdToken, ok := oauth2Token.Extra("id_token").(string);
+  if !ok {
+    return fmt.Errorf("No id_token field in oauth2 token");
+  }
+
+  // Verify the id token
+  oidcConfig := &oidc.Config{ClientID: env.Envs.OAUTH2_GOOGLE_CLIENT_ID};
+  verifier := h.provider.Verifier(oidcConfig);
+
+  idToken, err := verifier.Verify(context.Background(), rawIdToken);
+  if err != nil {
+    return services.NewInternalServiceError(err);
+  }
+
+  nonce, err := r.Cookie("nonce");
+  if err != nil {
+    return services.NewInternalServiceError(err);
+  }
+
+  if idToken.Nonce != nonce.Value {
+    return fmt.Errorf("nonce did not match");
+  }
+  
+  // Get user data from the id token
+  var claims struct {
+    Email string `json:"email"`
+    Name string `json:"name"`
+    Sub string `json:"sub"`
+    EmailVerified bool `json:"email_verified"`
+
+  }
+
+  userInfo, err := h.provider.UserInfo(context.Background(), oauth2.StaticTokenSource(oauth2Token));
+  if err != nil {
+    return services.NewInternalServiceError(err);
+  }
+
+  if err := userInfo.Claims(&claims); err != nil {
+    return services.NewInternalServiceError(err);
+  }
+
+  // Add the user to the database if not already
+  err = h.createUser(context.Background(), &types.UserCreate{Id: claims.Sub, Email: claims.Email, Name: claims.Name});
   if err != nil {
     return services.NewInternalServiceError(err);
   }
   
-  if err := h.storeUserUUID(w, r, userUUID); err != nil {
-    return services.NewInternalServiceError(err);
-  }
-
-  return nil;
-}
-
-func (h *Handler) storeUserUUID(w http.ResponseWriter, r *http.Request, id *uuid.UUID) error {
-
-  session, _ := h.store.Get(r, session_cookie);
-  session.Values["user"] = id;
-  
-  err := session.Save(r, w);
+  err = h.sessionManager.CreateSession(context.Background(), w, r, claims.Sub);
   if err != nil {
-    h.logger.Error("Error while storing userUUID");
-    return services.NewInternalServiceError(err);
+    return err;
   }
+
   return nil;
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) error {
 
-  session, err := h.store.Get(r, session_cookie);
+  err := h.sessionManager.ClearSession(context.Background(), w, r);
   if err != nil {
-    return services.NewInternalServiceError(err);
-  }
-  session.Options.MaxAge = -1;
-  if err := session.Save(r, w); err != nil {
-    return services.NewInternalServiceError(err);
+    return err;
   }
 
   return nil;
 }
 
-func (h *Handler) GetUserSession(r *http.Request) (uuid.UUID, error) {
-  session, err := h.store.Get(r, session_cookie);
-  if err != nil {
-    return uuid.UUID{}, services.NewUnauthorizedServiceError(err);
-  }
 
-  u := session.Values["user"];
-  if u == nil {
-    return uuid.UUID{}, services.NewUnauthorizedServiceError(err);
+func randString(nByte int) (string, error) {
+  b := make([]byte, nByte);
+  if _, err := io.ReadFull(rand.Reader, b); err != nil {
+    return "", err;
   }
-
-  return u.(uuid.UUID), nil;
+  return base64.RawURLEncoding.EncodeToString(b), nil;
 }
 
-func (h *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
-  return func(w http.ResponseWriter, r *http.Request) {
-    _, err := h.GetUserSession(r);
-    if err != nil {
-      h.handleError(w, err);
-      return;
-    }
-    next.ServeHTTP(w, r);
+func setCallbackCookie(w http.ResponseWriter, r *http.Request, name string, value string) {
+  c := &http.Cookie{
+    Name: name,
+    Value: value,
+    MaxAge: int(time.Hour.Seconds()),
+    Secure: r.TLS != nil,
+    HttpOnly: true,
   }
+  http.SetCookie(w, c);
 }
-

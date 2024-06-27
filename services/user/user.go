@@ -5,41 +5,40 @@ import (
 	"log/slog"
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
+	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 )
 
 
 type Handler struct{
   logger *slog.Logger;
   store types.UserStore;
-  auth *auth.Handler;
+  sessions *sessions.SessionManager;
   handleError services.HTTPErrorHandler
 }
 
-func NewHandler(store types.UserStore, auth *auth.Handler, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
+func NewHandler(store types.UserStore, sessions *sessions.SessionManager, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
   return &Handler{
     logger: logger,
-    auth: auth,
+    sessions: sessions,
     store: store,
     handleError: handleError,
   };
 }
 
-func (h *Handler) CreateUser(context context.Context, data *types.UserCreate) (*uuid.UUID, error) {
+func (h *Handler) CreateUser(context context.Context, data *types.UserCreate) error {
   h.logger.Debug("Creating user.");
   err := types.ValidateData(data, h.logger);
   if err != nil {
-    return nil, err;
+    return err;
   }
 
-  id, err := h.store.CreateUser(context, data);
+  err = h.store.CreateUser(context, data);
   if err != nil {
-    return nil, err;
+    return err;
   }
 
-  h.logger.Debug("User created.", "id", id);
-  return id, nil;
+  h.logger.Debug("User created.");
+  return nil;
 }
 

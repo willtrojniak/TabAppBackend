@@ -24,4 +24,3 @@ func NewPostgresStorage(context context.Context, config *pgxpool.Config) (*PgxSt
   return pg, nil;
 }
 
-
