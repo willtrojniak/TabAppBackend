@@ -6,12 +6,14 @@ RUN go mod download && go mod verify
 COPY . .
 
 FROM build_base as build_migrate
+ENV GOCACHE=/root/.cache/go-build
 ARG ENV="dev"
-RUN go build -v -o ./bin/migrate -ldflags "-X env.EXT_ENVIRONMENT=${ENV}" ./cmd/migrate/main.go
+RUN --mount=type=cache,target="/root/.cach/go-build" go build -v -o ./bin/migrate -ldflags "-X env.EXT_ENVIRONMENT=${ENV}" ./cmd/migrate/main.go
 
 FROM build_base as build
+ENV GOCACHE=/root/.cache/go-build
 ARG ENV="dev"
-RUN go build -v -o ./bin/api -ldflags "-X env.EXT_ENVIRONMENT=${ENV}" ./cmd/main.go
+RUN --mount=type=cache,target="/root/.cach/go-build" go build -v -o ./bin/api -ldflags "-X env.EXT_ENVIRONMENT=${ENV}" ./cmd/main.go
 
 FROM debian:bookworm
 RUN apt update
