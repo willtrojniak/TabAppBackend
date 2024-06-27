@@ -30,9 +30,13 @@ func RequestLoggerMiddleware(next http.Handler) http.HandlerFunc {
 func RequireSession(s *sessions.SessionManager, h services.HTTPErrorHandler) Middleware {
   return func (next http.Handler) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-      _, err := s.GetSession(context.Background(), r);
+      session, err := s.GetSession(context.Background(), r);
       if err != nil {
         h(w, err);
+        return;
+      }
+      if session.UserId == "" {
+        h(w, services.NewUnauthorizedServiceError(nil));
         return;
       }
       next.ServeHTTP(w, r);

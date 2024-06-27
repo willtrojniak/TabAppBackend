@@ -138,7 +138,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
     return services.NewInternalServiceError(err);
   }
   
-  err = h.sessionManager.CreateSession(context.Background(), w, r, claims.Sub);
+  _, err = h.sessionManager.CreateSession(context.Background(), w, r, claims.Sub);
   if err != nil {
     return err;
   }

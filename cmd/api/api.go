@@ -48,6 +48,8 @@ func (s *APIServer) Run() error {
   authHandler.RegisterRoutes(router);
   userHandler.RegisterRoutes(v1);
 
-  router.Handle("/api/v1/", http.StripPrefix("/api/v1", RequireSession(sessionManager, services.HandleHttpError)(v1)));
+  router.Handle("/api/v1/", http.StripPrefix("/api/v1", WithMiddleware(
+    sessionManager.RequireCSRFHeader(services.HandleHttpError),
+    RequireSession(sessionManager, services.HandleHttpError))(v1)));
   return http.ListenAndServe(s.addr, WithMiddleware(RequestLoggerMiddleware)(router));
 }
