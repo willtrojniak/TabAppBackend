@@ -33,7 +33,7 @@ func NewAPIServer(addr string, store *db.PgxStore, cache *redis.Client) *APIServ
 }
 
 func (s *APIServer) Run() error {
-	sessionManager := sessions.New(s.cache, time.Hour*24*30, slog.Default())
+	sessionManager := sessions.New(s.cache, time.Hour*24*30, services.HandleHttpError, slog.Default())
 
 	authHandler, err := auth.NewHandler(services.HandleHttpError, sessionManager, slog.Default())
 	if err != nil {
@@ -49,7 +49,7 @@ func (s *APIServer) Run() error {
 	userHandler.RegisterRoutes(v1)
 
 	router.Handle("/api/v1/", http.StripPrefix("/api/v1", WithMiddleware(
-		sessionManager.RequireCSRFHeader(services.HandleHttpError),
-		RequireSession(sessionManager, services.HandleHttpError))(v1)))
+		sessionManager.RequireCSRFHeader,
+		sessionManager.RequireAuth)(v1)))
 	return http.ListenAndServe(s.addr, WithMiddleware(RequestLoggerMiddleware)(router))
 }

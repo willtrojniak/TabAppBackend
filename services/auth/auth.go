@@ -26,10 +26,10 @@ type Handler struct {
 	createUser     CreateUserFn
 	config         oauth2.Config
 	provider       *oidc.Provider
-	sessionManager *sessions.SessionManager
+	sessionManager *sessions.Handler
 }
 
-func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.SessionManager, logger *slog.Logger) (*Handler, error) {
+func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.Handler, logger *slog.Logger) (*Handler, error) {
 	provider, err := oidc.NewProvider(context.TODO(), "https://accounts.google.com")
 	if err != nil {
 		return nil, err

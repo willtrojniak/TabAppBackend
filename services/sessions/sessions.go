@@ -15,10 +15,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type SessionManager struct {
+type Handler struct {
 	logger         *slog.Logger
 	store          *redis.Client
 	expirationTime time.Duration
+	handleError    services.HTTPErrorHandler
 }
 
 type SessionData struct {
@@ -30,22 +31,24 @@ type SessionData struct {
 const (
 	session_cookie = "session"
 	csrf_header    = "X-CSRF-TOKEN"
+	csrf_field     = "xcsrftoken"
 )
 
 var (
 	safe_methods = []string{"GET", "HEAD", "OPTIONS", "TRACE"}
 )
 
-func New(store *redis.Client, expiryTime time.Duration, logger *slog.Logger) *SessionManager {
+func New(store *redis.Client, expiryTime time.Duration, h services.HTTPErrorHandler, logger *slog.Logger) *Handler {
 
-	return &SessionManager{
+	return &Handler{
 		logger:         logger,
 		store:          store,
 		expirationTime: expiryTime,
+		handleError:    h,
 	}
 }
 
-func (s *SessionManager) CreateSession(w http.ResponseWriter, r *http.Request, userId string) (*SessionData, error) {
+func (s *Handler) CreateSession(w http.ResponseWriter, r *http.Request, userId string) (*SessionData, error) {
 	sessionID, err := randString(32)
 	if err != nil {
 		return nil, services.NewInternalServiceError(err)
@@ -83,8 +86,7 @@ func (s *SessionManager) CreateSession(w http.ResponseWriter, r *http.Request, u
 	return &sessionData, nil
 }
 
-func (s *SessionManager) GetSession(r *http.Request) (*SessionData, error) {
-	// TODO: Maybe just use the request's context?
+func (s *Handler) GetSession(r *http.Request) (*SessionData, error) {
 	sessionCookie, err := r.Cookie(session_cookie)
 	if err != nil {
 		return nil, services.NewUnauthorizedServiceError(err)
@@ -111,8 +113,7 @@ func (s *SessionManager) GetSession(r *http.Request) (*SessionData, error) {
 	return &sessionData, nil
 }
 
-func (s *SessionManager) ClearSession(w http.ResponseWriter, r *http.Request) error {
-	// TODO: Maybe just use the request's context?
+func (s *Handler) ClearSession(w http.ResponseWriter, r *http.Request) error {
 	_, err := s.CreateSession(w, r, "") // Create an anonymous session
 	if err != nil {
 		return err
@@ -120,50 +121,63 @@ func (s *SessionManager) ClearSession(w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
-func (s *SessionManager) RequireCSRFHeader(h services.HTTPErrorHandler) func(http.Handler) http.HandlerFunc {
-	return func(next http.Handler) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) RequireCSRFHeader(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 
-			// Check for an active session
-			session, err := s.GetSession(r)
+		// Check for an active session
+		session, err := s.GetSession(r)
+		if err != nil {
+
+			// If there is no session, create an unauthenticated session
+			session, err = s.CreateSession(w, r, "") // Empty string for no user id --> unauthenticated
 			if err != nil {
-
-				// If there is no session, create an unauthenticated session
-				session, err = s.CreateSession(w, r, "") // Empty string for no user id --> unauthenticated
-				if err != nil {
-					s.logger.Error("Failed to create anonymous session", "error", err)
-					h(w, services.NewInternalServiceError(err))
-					return
-				}
-			}
-			// Set the CSRF header in the response
-			s.setCSRFHeader(w, session)
-
-			requestToken := r.Header.Get(csrf_header)
-			safeMethod := false
-			for _, val := range safe_methods {
-				if val == r.Method {
-					safeMethod = true
-					break
-				}
-			}
-
-			if !safeMethod && requestToken != session.CSRFToken {
-				s.logger.Warn("CSRF Tokens did not match", "incoming-token", requestToken, "stored-token", session.CSRFToken)
-				h(w, services.NewServiceError(errors.New("CSRF Tokens did not match"), http.StatusForbidden, "CSRF Tokens did not match", nil))
+				s.logger.Error("Failed to create anonymous session", "error", err)
+				s.handleError(w, services.NewInternalServiceError(err))
 				return
 			}
-
-			next.ServeHTTP(w, r)
 		}
+		// Set the CSRF header in the response
+		s.setCSRFHeader(w, session)
+
+		requestToken := r.Header.Get(csrf_header)
+		safeMethod := false
+		for _, val := range safe_methods {
+			if val == r.Method {
+				safeMethod = true
+				break
+			}
+		}
+
+		if !safeMethod && requestToken != session.CSRFToken {
+			s.logger.Warn("CSRF Tokens did not match", "incoming-token", requestToken, "stored-token", session.CSRFToken)
+			s.handleError(w, services.NewServiceError(errors.New("CSRF Tokens did not match"), http.StatusForbidden, "CSRF Tokens did not match", nil))
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	}
 }
 
-func (s *SessionManager) setCSRFHeader(w http.ResponseWriter, data *SessionData) {
+func (s *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, err := s.GetSession(r)
+		if err != nil {
+			s.handleError(w, err)
+			return
+		}
+		if session.UserId == "" {
+			s.handleError(w, services.NewUnauthorizedServiceError(nil))
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
+func (s *Handler) setCSRFHeader(w http.ResponseWriter, data *SessionData) {
 	w.Header().Set(csrf_header, data.CSRFToken)
 }
 
-func (s *SessionManager) createSessionCookie(w http.ResponseWriter, r *http.Request, sessionId string) {
+func (s *Handler) createSessionCookie(w http.ResponseWriter, r *http.Request, sessionId string) {
 	c := &http.Cookie{
 		Name:     session_cookie,
 		Value:    sessionId,
@@ -188,4 +202,18 @@ func randString(nByte int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func getRequestToken(r *http.Request) string {
+	token := r.Header.Get(csrf_header)
+	if token != "" {
+		return token
+	}
+
+	token = r.PostFormValue(csrf_field)
+	if token != "" {
+		return token
+	}
+
+	return ""
 }

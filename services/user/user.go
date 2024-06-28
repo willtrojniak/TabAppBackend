@@ -12,11 +12,11 @@ import (
 type Handler struct {
 	logger      *slog.Logger
 	store       types.UserStore
-	sessions    *sessions.SessionManager
+	sessions    *sessions.Handler
 	handleError services.HTTPErrorHandler
 }
 
-func NewHandler(store types.UserStore, sessions *sessions.SessionManager, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
+func NewHandler(store types.UserStore, sessions *sessions.Handler, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
 	return &Handler{
 		logger:      logger,
 		sessions:    sessions,
