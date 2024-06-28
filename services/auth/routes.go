@@ -7,7 +7,7 @@ import (
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	router.HandleFunc("GET /auth/{provider}/callback", h.handleAuthCallback)
 	router.HandleFunc("GET /auth/{provider}", h.handleAuth)
-	router.HandleFunc("GET /logout", h.handleLogout)
+	router.HandleFunc("POST /logout", h.handleLogout)
 	h.logger.Info("Registered auth routes")
 }
 
@@ -40,6 +40,6 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/api/v1/login", http.StatusFound)
+	w.WriteHeader(http.StatusOK)
 	return
 }

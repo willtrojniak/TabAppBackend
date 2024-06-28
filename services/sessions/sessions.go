@@ -107,7 +107,7 @@ func (s *Handler) GetSession(r *http.Request) (*SessionData, error) {
 
 	if sessionData.Ip != readUserIP(r) {
 		s.logger.Debug("Attempted to access session with different ip", "stored-ip", sessionData.Ip, "request-ip", readUserIP(r))
-		return nil, services.NewInternalServiceError(err)
+		return nil, services.NewUnauthorizedServiceError(err)
 	}
 
 	return &sessionData, nil
@@ -150,7 +150,7 @@ func (s *Handler) RequireCSRFHeader(next http.Handler) http.HandlerFunc {
 
 		if !safeMethod && requestToken != session.CSRFToken {
 			s.logger.Warn("CSRF Tokens did not match", "incoming-token", requestToken, "stored-token", session.CSRFToken)
-			s.handleError(w, services.NewServiceError(errors.New("CSRF Tokens did not match"), http.StatusForbidden, "CSRF Tokens did not match", nil))
+			s.handleError(w, services.NewServiceError(errors.New("CSRF Tokens did not match"), http.StatusForbidden, nil))
 			return
 		}
 

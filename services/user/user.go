@@ -40,3 +40,13 @@ func (h *Handler) CreateUser(context context.Context, data *types.UserCreate) er
 	h.logger.Debug("User created.")
 	return nil
 }
+
+func (h *Handler) GetUser(context context.Context, userId string) (*types.User, error) {
+	user, err := h.store.GetUser(context, userId)
+	if err != nil {
+		h.logger.Error("Failed to get user from database", "userId", userId, "err", err)
+		return nil, services.NewInternalServiceError(err)
+	}
+	return user, nil
+
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/WilliamTrojniak/TabAppBackend/types"
+	"github.com/jackc/pgx/v5"
 )
 
 func (s *PgxStore) CreateUser(context context.Context, data *types.UserCreate) error {
@@ -16,4 +17,15 @@ func (s *PgxStore) CreateUser(context context.Context, data *types.UserCreate) e
 	}
 
 	return nil
+}
+
+func (s *PgxStore) GetUser(context context.Context, userId string) (*types.User, error) {
+	row, _ := s.pool.Query(context,
+		`SELECT * FROM users WHERE id = $1`, userId)
+
+	user, err := pgx.CollectOneRow(row, pgx.RowToAddrOfStructByName[types.User])
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }

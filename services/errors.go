@@ -14,6 +14,7 @@ type HTTPError interface {
 
 func writeHttpError(w http.ResponseWriter, e HTTPError) {
 	w.WriteHeader(e.StatusCode())
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(
 		struct {
 			Msg  string      `json:"msg"`
@@ -43,11 +44,11 @@ type ServiceError struct {
 }
 
 func NewInternalServiceError(err error) *ServiceError {
-	return NewServiceError(err, http.StatusInternalServerError, "Internal server error.", nil)
+	return NewServiceError(err, http.StatusInternalServerError, nil)
 }
 
 func NewUnauthorizedServiceError(err error) *ServiceError {
-	return NewServiceError(err, http.StatusUnauthorized, "Unauthorized.", nil)
+	return NewServiceError(err, http.StatusUnauthorized, nil)
 }
 
 type ValidationError struct {
@@ -57,11 +58,11 @@ type ValidationError struct {
 type ValidationErrors map[string]ValidationError
 
 func NewValidationServiceError(err error, parsingErrors interface{}) *ServiceError {
-	return NewServiceError(err, http.StatusBadRequest, "Problems parsing data.", parsingErrors)
+	return NewServiceError(err, http.StatusBadRequest, parsingErrors)
 }
 
-func NewServiceError(err error, code int, msg string, data interface{}) *ServiceError {
-	return &ServiceError{err: err, code: code, msg: msg, data: data}
+func NewServiceError(err error, code int, data interface{}) *ServiceError {
+	return &ServiceError{err: err, code: code, msg: http.StatusText(code), data: data}
 }
 
 func (e *ServiceError) StatusCode() int {
