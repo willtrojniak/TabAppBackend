@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
 )
 
@@ -47,10 +46,9 @@ func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	userId := r.PathValue(userIdPath)
 
 	data := types.UserUpdate{}
-	dec := json.NewDecoder(r.Body)
-	err = dec.Decode(&data)
+	err = types.ReadRequestJson(r, &data)
 	if err != nil {
-		h.handleError(w, services.NewValidationServiceError(err, nil))
+		h.handleError(w, err)
 		return
 	}
 
