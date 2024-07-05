@@ -47,8 +47,12 @@ func NewInternalServiceError(err error) *ServiceError {
 	return NewServiceError(err, http.StatusInternalServerError, nil)
 }
 
-func NewUnauthorizedServiceError(err error) *ServiceError {
+func NewUnauthenticatedServiceError(err error) *ServiceError {
 	return NewServiceError(err, http.StatusUnauthorized, nil)
+}
+
+func NewUnauthorizedServiceError(err error) *ServiceError {
+	return NewServiceError(err, http.StatusForbidden, nil)
 }
 
 type ValidationError struct {

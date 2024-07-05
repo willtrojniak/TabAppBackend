@@ -22,10 +22,14 @@ type Handler struct {
 	handleError    services.HTTPErrorHandler
 }
 
-type SessionData struct {
+type sessionData struct {
 	UserId    string
 	CSRFToken string
 	Ip        string
+}
+
+type Session struct {
+	data sessionData
 }
 
 const (
@@ -48,7 +52,7 @@ func New(store *redis.Client, expiryTime time.Duration, h services.HTTPErrorHand
 	}
 }
 
-func (s *Handler) CreateSession(w http.ResponseWriter, r *http.Request, userId string) (*SessionData, error) {
+func (s *Handler) CreateSession(w http.ResponseWriter, r *http.Request, userId string) (*Session, error) {
 	sessionID, err := randString(32)
 	if err != nil {
 		return nil, services.NewInternalServiceError(err)
@@ -59,8 +63,9 @@ func (s *Handler) CreateSession(w http.ResponseWriter, r *http.Request, userId s
 	}
 	s.logger.Debug("Creating session", "sessionId", sessionID)
 
-	sessionData := SessionData{UserId: userId, Ip: readUserIP(r), CSRFToken: csrfToken}
-	jsonString, err := json.Marshal(sessionData)
+	session := Session{}
+	session.data = sessionData{UserId: userId, Ip: readUserIP(r), CSRFToken: csrfToken}
+	jsonString, err := json.Marshal(session.data)
 	if err != nil {
 		return nil, services.NewInternalServiceError(err)
 	}
@@ -80,37 +85,37 @@ func (s *Handler) CreateSession(w http.ResponseWriter, r *http.Request, userId s
 	}
 
 	s.createSessionCookie(w, r, sessionID)
-	s.setCSRFHeader(w, &sessionData)
+	s.setCSRFHeader(w, &session)
 	s.logger.Debug("Session created", "sessionId", sessionID)
 
-	return &sessionData, nil
+	return &session, nil
 }
 
-func (s *Handler) GetSession(r *http.Request) (*SessionData, error) {
+func (s *Handler) GetSession(r *http.Request) (*Session, error) {
 	sessionCookie, err := r.Cookie(session_cookie)
 	if err != nil {
-		return nil, services.NewUnauthorizedServiceError(err)
+		return nil, services.NewUnauthenticatedServiceError(err)
 	}
 
 	sessionId := sessionCookie.Value
 	jsonString, err := s.store.Get(r.Context(), sessionId).Bytes()
 	if err != nil {
-		return nil, services.NewUnauthorizedServiceError(err)
+		return nil, services.NewUnauthenticatedServiceError(err)
 	}
 
-	sessionData := SessionData{}
-	err = json.Unmarshal(jsonString, &sessionData)
+	session := Session{}
+	err = json.Unmarshal(jsonString, &session.data)
 	if err != nil {
 		s.logger.Warn("Failed to parse json data from redis")
-		return nil, services.NewUnauthorizedServiceError(err)
+		return nil, services.NewUnauthenticatedServiceError(err)
 	}
 
-	if sessionData.Ip != readUserIP(r) {
-		s.logger.Debug("Attempted to access session with different ip", "stored-ip", sessionData.Ip, "request-ip", readUserIP(r))
-		return nil, services.NewUnauthorizedServiceError(err)
+	if session.data.Ip != readUserIP(r) {
+		s.logger.Debug("Attempted to access session with different ip", "stored-ip", session.data.Ip, "request-ip", readUserIP(r))
+		return nil, services.NewUnauthenticatedServiceError(err)
 	}
 
-	return &sessionData, nil
+	return &session, nil
 }
 
 func (s *Handler) ClearSession(w http.ResponseWriter, r *http.Request) error {
@@ -148,8 +153,8 @@ func (s *Handler) RequireCSRFHeader(next http.Handler) http.HandlerFunc {
 			}
 		}
 
-		if !safeMethod && requestToken != session.CSRFToken {
-			s.logger.Warn("CSRF Tokens did not match", "incoming-token", requestToken, "stored-token", session.CSRFToken)
+		if !safeMethod && requestToken != session.data.CSRFToken {
+			s.logger.Warn("CSRF Tokens did not match", "incoming-token", requestToken, "stored-token", session.data.CSRFToken)
 			s.handleError(w, services.NewServiceError(errors.New("CSRF Tokens did not match"), http.StatusForbidden, nil))
 			return
 		}
@@ -165,16 +170,23 @@ func (s *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
 			s.handleError(w, err)
 			return
 		}
-		if session.UserId == "" {
-			s.handleError(w, services.NewUnauthorizedServiceError(nil))
+		if _, err := session.GetUserId(); err != nil {
+			s.handleError(w, err)
 			return
 		}
 		next.ServeHTTP(w, r)
 	}
 }
 
-func (s *Handler) setCSRFHeader(w http.ResponseWriter, data *SessionData) {
-	w.Header().Set(csrf_header, data.CSRFToken)
+func (s *Session) GetUserId() (string, error) {
+	if s.data.UserId == "" {
+		return "", services.NewUnauthenticatedServiceError(nil)
+	}
+	return s.data.UserId, nil
+}
+
+func (s *Handler) setCSRFHeader(w http.ResponseWriter, session *Session) {
+	w.Header().Set(csrf_header, session.data.CSRFToken)
 }
 
 func (s *Handler) createSessionCookie(w http.ResponseWriter, r *http.Request, sessionId string) {

@@ -29,3 +29,13 @@ func (s *PgxStore) GetUser(context context.Context, userId string) (*types.User,
 	}
 	return user, nil
 }
+
+func (s *PgxStore) UpdateUser(context context.Context, userId string, data *types.UserUpdate) error {
+	_, err := s.pool.Exec(context, `UPDATE users SET preferred_name = $1 WHERE id = $2`, data.PreferredName, userId)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

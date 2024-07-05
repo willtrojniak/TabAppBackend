@@ -12,16 +12,22 @@ type UserStore interface {
 
 	//
 	GetUser(context context.Context, userId string) (*User, error)
+
+	UpdateUser(context context.Context, userId string, data *UserUpdate) error
 }
 
 type UserCreate struct {
-	Id            string  `json:"id" db:"id" validate:"required,max=255"`
-	Email         string  `json:"email" db:"email" validate:"required,email,max=255"`
-	Name          string  `json:"name" db:"name" validate:"required,min=2,max=64"`
+	Id    string `json:"id" db:"id" validate:"required,max=255"`
+	Email string `json:"email" db:"email" validate:"required,email,max=255"`
+	Name  string `json:"name" db:"name" validate:"required,min=2,max=64"`
+}
+
+type UserUpdate struct {
 	PreferredName *string `json:"preferred_name" db:"preferred_name" validate:"omitempty,min=2,max=64"`
 }
 
 type User struct {
 	UserCreate
+	UserUpdate
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }
