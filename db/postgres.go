@@ -2,7 +2,12 @@ package db
 
 import (
 	"context"
+	"errors"
 
+	"github.com/WilliamTrojniak/TabAppBackend/services"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -21,4 +26,17 @@ func NewPostgresStorage(ctx context.Context, config *pgxpool.Config) (*PgxStore,
 	}
 
 	return pg, nil
+}
+
+func handlePgxError(err error) error {
+	var pgerr *pgconn.PgError
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return services.NewNotFoundServiceError(err)
+	}
+
+	if errors.As(err, &pgerr) && pgerr.Code == pgerrcode.UniqueViolation {
+		return services.NewDataConflictServiceError(err)
+	}
+	return services.NewInternalServiceError(err)
 }

@@ -75,3 +75,43 @@ func (h *Handler) GetShopById(ctx context.Context, shopId uuid.UUID) (types.Shop
 	}
 	return shop, err
 }
+
+func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, data *types.ShopUpdate) error {
+	err := h.AuthorizeModifyShop(ctx, session, data.Id)
+	if err != nil {
+		return err
+	}
+
+	err = types.ValidateData(data, h.logger)
+	if err != nil {
+		return err
+	}
+	h.logger.Debug("Updating Shop", "id", data.Id)
+
+	err = h.store.UpdateShop(ctx, data)
+	if err != nil {
+		h.logger.Debug("Error Updating Shop", "id", data.Id, "error", err)
+		return err
+	}
+	h.logger.Debug("Updated Shop", "id", data.Id)
+
+	return nil
+}
+
+func (h *Handler) AuthorizeModifyShop(ctx context.Context, session *sessions.Session, targetShopId uuid.UUID) error {
+	userId, err := session.GetUserId()
+	if err != nil {
+		return err
+	}
+
+	shop, err := h.store.GetShopById(ctx, targetShopId)
+	if err != nil {
+		return err
+	}
+
+	if shop.OwnerId != userId {
+		return services.NewUnauthorizedServiceError(errors.New("Unauthorized"))
+	}
+
+	return nil
+}

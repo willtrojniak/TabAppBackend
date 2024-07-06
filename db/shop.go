@@ -2,15 +2,11 @@ package db
 
 import (
 	"context"
-	"errors"
-	"net/http"
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/google/uuid"
-	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func (s *PgxStore) CreateShop(ctx context.Context, data *types.ShopCreate) error {
@@ -22,11 +18,7 @@ func (s *PgxStore) CreateShop(ctx context.Context, data *types.ShopCreate) error
 	_, err = s.pool.Exec(ctx,
 		`INSERT INTO shops (id, owner_id, name) VALUES ($1, $2, $3)`, id, data.OwnerId, data.Name)
 	if err != nil {
-		var pgerr *pgconn.PgError
-		if errors.As(err, &pgerr) && pgerr.Code == pgerrcode.UniqueViolation {
-			return services.NewServiceError(err, http.StatusConflict, nil)
-		}
-		return services.NewInternalServiceError(err)
+		return handlePgxError(err)
 	}
 	return nil
 }
@@ -40,12 +32,12 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 			"offset": offset,
 		})
 	if err != nil {
-		return nil, services.NewInternalServiceError(err)
+		return nil, handlePgxError(err)
 	}
 
 	shops, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Shop])
 	if err != nil {
-		return nil, services.NewInternalServiceError(err)
+		return nil, handlePgxError(err)
 	}
 	return shops, nil
 
@@ -58,14 +50,29 @@ func (s *PgxStore) GetShopById(ctx context.Context, shopId uuid.UUID) (types.Sho
 			"shopId": shopId,
 		})
 	if err != nil {
-		return types.Shop{}, services.NewInternalServiceError(err)
+		return types.Shop{}, handlePgxError(err)
 	}
 
 	shop, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Shop])
 	if err != nil {
-		return types.Shop{}, services.NewInternalServiceError(err)
+		return types.Shop{}, handlePgxError(err)
 	}
 
 	return shop, nil
 
+}
+
+func (s *PgxStore) UpdateShop(ctx context.Context, data *types.ShopUpdate) error {
+	_, err := s.pool.Exec(ctx,
+		`UPDATE shops SET name = @name WHERE shops.id = @shopId`,
+		pgx.NamedArgs{
+			"name":   data.Name,
+			"shopId": data.Id,
+		})
+
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	return nil
 }

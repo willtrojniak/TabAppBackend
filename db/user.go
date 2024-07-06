@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 
-	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/jackc/pgx/v5"
 )
@@ -14,7 +13,7 @@ func (s *PgxStore) CreateUser(ctx context.Context, data *types.UserCreate) error
       SET email = excluded.email, name = excluded.name`, data.Id, data.Email, data.Name)
 
 	if err != nil {
-		return services.NewInternalServiceError(err)
+		return handlePgxError(err)
 	}
 
 	return nil
@@ -26,7 +25,7 @@ func (s *PgxStore) GetUser(ctx context.Context, userId string) (*types.User, err
 
 	user, err := pgx.CollectOneRow(row, pgx.RowToAddrOfStructByName[types.User])
 	if err != nil {
-		return nil, services.NewInternalServiceError(err)
+		return nil, handlePgxError(err)
 	}
 	return user, nil
 }
@@ -35,7 +34,7 @@ func (s *PgxStore) UpdateUser(ctx context.Context, userId string, data *types.Us
 	_, err := s.pool.Exec(ctx, `UPDATE users SET preferred_name = $1 WHERE id = $2`, data.PreferredName, userId)
 
 	if err != nil {
-		return services.NewInternalServiceError(err)
+		return handlePgxError(err)
 	}
 
 	return nil

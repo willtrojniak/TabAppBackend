@@ -55,6 +55,14 @@ func NewUnauthorizedServiceError(err error) *ServiceError {
 	return NewServiceError(err, http.StatusForbidden, nil)
 }
 
+func NewDataConflictServiceError(err error) *ServiceError {
+	return NewServiceError(err, http.StatusConflict, nil)
+}
+
+func NewNotFoundServiceError(err error) *ServiceError {
+	return NewServiceError(err, http.StatusNotFound, nil)
+}
+
 type ValidationError struct {
 	Value interface{}
 	Error string
