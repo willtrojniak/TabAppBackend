@@ -41,7 +41,7 @@ func ValidateData(data interface{}, logger *slog.Logger) error {
 		for _, err := range err.(validator.ValidationErrors) {
 			errors[err.Field()] = services.ValidationError{Value: err.Value(), Error: err.Tag()}
 		}
-		logger.Debug("User validation failed...", "errors", errors)
+		logger.Debug("Data validation failed", "errors", errors)
 		return services.NewValidationServiceError(err, errors)
 
 	}

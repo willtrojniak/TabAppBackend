@@ -23,6 +23,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 
 	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}", shopIdParam), h.handleGetShopById)
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}", shopIdParam), h.handleUpdateShop)
+	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}", shopIdParam), h.handleDeleteShop)
 
 }
 
@@ -68,7 +69,7 @@ func (h *Handler) handleGetShopById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shop, err := h.GetShopById(r.Context(), shopId)
+	shop, err := h.GetShopById(r.Context(), &shopId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -98,9 +99,28 @@ func (h *Handler) handleUpdateShop(w http.ResponseWriter, r *http.Request) {
 		h.handleError(w, err)
 		return
 	}
-	data.Id = shopId
 
-	err = h.UpdateShop(r.Context(), session, &data)
+	err = h.UpdateShop(r.Context(), session, &shopId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleDeleteShop(w http.ResponseWriter, r *http.Request) {
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
+		return
+	}
+
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.DeleteShop(r.Context(), session, &shopId)
 	if err != nil {
 		h.handleError(w, err)
 		return

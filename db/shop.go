@@ -43,7 +43,7 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 
 }
 
-func (s *PgxStore) GetShopById(ctx context.Context, shopId uuid.UUID) (types.Shop, error) {
+func (s *PgxStore) GetShopById(ctx context.Context, shopId *uuid.UUID) (types.Shop, error) {
 	row, err := s.pool.Query(ctx,
 		`SELECT * FROM shops WHERE shops.id = @shopId`,
 		pgx.NamedArgs{
@@ -62,17 +62,29 @@ func (s *PgxStore) GetShopById(ctx context.Context, shopId uuid.UUID) (types.Sho
 
 }
 
-func (s *PgxStore) UpdateShop(ctx context.Context, data *types.ShopUpdate) error {
+func (s *PgxStore) UpdateShop(ctx context.Context, shopId *uuid.UUID, data *types.ShopUpdate) error {
 	_, err := s.pool.Exec(ctx,
 		`UPDATE shops SET name = @name WHERE shops.id = @shopId`,
 		pgx.NamedArgs{
 			"name":   data.Name,
-			"shopId": data.Id,
+			"shopId": shopId,
 		})
 
 	if err != nil {
 		return handlePgxError(err)
 	}
 
+	return nil
+}
+
+func (s *PgxStore) DeleteShop(ctx context.Context, shopId *uuid.UUID) error {
+	_, err := s.pool.Exec(ctx,
+		`DELETE FROM shops WHERE shops.id = @shopId`,
+		pgx.NamedArgs{
+			"shopId": shopId,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
 	return nil
 }

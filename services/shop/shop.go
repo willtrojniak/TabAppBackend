@@ -68,7 +68,7 @@ func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]types.
 
 }
 
-func (h *Handler) GetShopById(ctx context.Context, shopId uuid.UUID) (types.Shop, error) {
+func (h *Handler) GetShopById(ctx context.Context, shopId *uuid.UUID) (types.Shop, error) {
 	shop, err := h.store.GetShopById(ctx, shopId)
 	if err != nil {
 		return types.Shop{}, err
@@ -76,8 +76,8 @@ func (h *Handler) GetShopById(ctx context.Context, shopId uuid.UUID) (types.Shop
 	return shop, err
 }
 
-func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, data *types.ShopUpdate) error {
-	err := h.AuthorizeModifyShop(ctx, session, data.Id)
+func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, data *types.ShopUpdate) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
 	}
@@ -86,19 +86,33 @@ func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, dat
 	if err != nil {
 		return err
 	}
-	h.logger.Debug("Updating Shop", "id", data.Id)
+	h.logger.Debug("Updating Shop", "id", shopId)
 
-	err = h.store.UpdateShop(ctx, data)
+	err = h.store.UpdateShop(ctx, shopId, data)
 	if err != nil {
-		h.logger.Debug("Error Updating Shop", "id", data.Id, "error", err)
+		h.logger.Debug("Error Updating Shop", "id", shopId, "error", err)
 		return err
 	}
-	h.logger.Debug("Updated Shop", "id", data.Id)
+	h.logger.Debug("Updated Shop", "id", shopId)
 
 	return nil
 }
 
-func (h *Handler) AuthorizeModifyShop(ctx context.Context, session *sessions.Session, targetShopId uuid.UUID) error {
+func (h *Handler) DeleteShop(ctx context.Context, session *sessions.Session, shopId *uuid.UUID) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return err
+	}
+
+	err = h.store.DeleteShop(ctx, shopId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *Handler) AuthorizeModifyShop(ctx context.Context, session *sessions.Session, targetShopId *uuid.UUID) error {
 	userId, err := session.GetUserId()
 	if err != nil {
 		return err
