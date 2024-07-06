@@ -50,3 +50,22 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 	return shops, nil
 
 }
+
+func (s *PgxStore) GetShopById(ctx context.Context, shopId uuid.UUID) (types.Shop, error) {
+	row, err := s.pool.Query(ctx,
+		`SELECT * FROM shops WHERE shops.id = @shopId`,
+		pgx.NamedArgs{
+			"shopId": shopId,
+		})
+	if err != nil {
+		return types.Shop{}, services.NewInternalServiceError(err)
+	}
+
+	shop, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Shop])
+	if err != nil {
+		return types.Shop{}, services.NewInternalServiceError(err)
+	}
+
+	return shop, nil
+
+}

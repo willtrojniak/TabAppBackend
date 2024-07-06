@@ -2,10 +2,15 @@ package shop
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
+	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
+	"github.com/google/uuid"
 )
+
+const shopIdParam = "shopId"
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	h.logger.Info("Registering shop routes")
@@ -15,6 +20,8 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 
 	subrouter := http.NewServeMux()
 	router.Handle("/shops/", http.StripPrefix("/shops", subrouter))
+
+	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}", shopIdParam), h.handleGetShopById)
 
 }
 
@@ -51,4 +58,22 @@ func (h *Handler) handleGetShops(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(shops)
 	return
+}
+
+func (h *Handler) handleGetShopById(w http.ResponseWriter, r *http.Request) {
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
+		return
+	}
+
+	shop, err := h.GetShopById(r.Context(), shopId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(shop)
+
 }

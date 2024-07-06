@@ -9,6 +9,7 @@ import (
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -65,4 +66,12 @@ func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]types.
 
 	return shops, nil
 
+}
+
+func (h *Handler) GetShopById(ctx context.Context, shopId uuid.UUID) (types.Shop, error) {
+	shop, err := h.store.GetShopById(ctx, shopId)
+	if err != nil {
+		return types.Shop{}, err
+	}
+	return shop, err
 }
