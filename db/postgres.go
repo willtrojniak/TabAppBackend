@@ -10,14 +10,14 @@ type PgxStore struct {
 	pool *pgxpool.Pool
 }
 
-func NewPostgresStorage(context context.Context, config *pgxpool.Config) (*PgxStore, error) {
-	conn, err := pgxpool.New(context, config.ConnString())
+func NewPostgresStorage(ctx context.Context, config *pgxpool.Config) (*PgxStore, error) {
+	pool, err := pgxpool.New(ctx, config.ConnString())
 	if err != nil {
-		return &PgxStore{}, err
+		return nil, err
 	}
 
 	pg := &PgxStore{
-		pool: conn,
+		pool: pool,
 	}
 
 	return pg, nil

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/WilliamTrojniak/TabAppBackend/db"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
@@ -12,12 +13,12 @@ import (
 
 type Handler struct {
 	logger      *slog.Logger
-	store       types.UserStore
+	store       *db.PgxStore
 	sessions    *sessions.Handler
 	handleError services.HTTPErrorHandler
 }
 
-func NewHandler(store types.UserStore, sessions *sessions.Handler, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
+func NewHandler(store *db.PgxStore, sessions *sessions.Handler, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
 	return &Handler{
 		logger:      logger,
 		sessions:    sessions,
@@ -51,7 +52,7 @@ func (h *Handler) GetUser(context context.Context, session *sessions.Session) (*
 	user, err := h.store.GetUser(context, userId)
 	if err != nil {
 		h.logger.Error("Failed to get user from database", "userId", userId, "err", err)
-		return nil, services.NewInternalServiceError(err)
+		return nil, err
 	}
 	return user, nil
 
@@ -73,7 +74,7 @@ func (h *Handler) UpdateUser(context context.Context, session *sessions.Session,
 	err = h.store.UpdateUser(context, userId, data)
 	if err != nil {
 		h.logger.Error("Error updating user", "id", userId, "error", err)
-		return services.NewInternalServiceError(err)
+		return err
 	}
 	h.logger.Debug("Updated user", "id", userId)
 

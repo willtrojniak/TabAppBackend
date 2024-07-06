@@ -10,6 +10,7 @@ import (
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
+	"github.com/WilliamTrojniak/TabAppBackend/services/shop"
 	"github.com/WilliamTrojniak/TabAppBackend/services/user"
 	"github.com/redis/go-redis/v9"
 )
@@ -42,14 +43,18 @@ func (s *APIServer) Run() error {
 	userHandler := user.NewHandler(s.store, sessionManager, services.HandleHttpError, slog.Default())
 	authHandler.SetCreateUserFn(userHandler.CreateUser)
 
+	shopHandler := shop.NewHandler(s.store, sessionManager, services.HandleHttpError, slog.Default())
+
 	router := http.NewServeMux()
 	v1 := http.NewServeMux()
 
 	authHandler.RegisterRoutes(router)
 	userHandler.RegisterRoutes(v1)
+	shopHandler.RegisterRoutes(v1)
 
 	router.Handle("/api/v1/", http.StripPrefix("/api/v1", WithMiddleware(
 		sessionManager.RequireCSRFHeader,
 		sessionManager.RequireAuth)(v1)))
+
 	return http.ListenAndServe(s.addr, WithMiddleware(RequestLoggerMiddleware)(router))
 }

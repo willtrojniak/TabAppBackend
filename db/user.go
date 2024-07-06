@@ -3,38 +3,39 @@ package db
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateUser(context context.Context, data *types.UserCreate) error {
-	_, err := s.pool.Exec(context, `
+func (s *PgxStore) CreateUser(ctx context.Context, data *types.UserCreate) error {
+	_, err := s.pool.Exec(ctx, `
     INSERT INTO users (id, email, name) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE
       SET email = excluded.email, name = excluded.name`, data.Id, data.Email, data.Name)
 
 	if err != nil {
-		return err
+		return services.NewInternalServiceError(err)
 	}
 
 	return nil
 }
 
-func (s *PgxStore) GetUser(context context.Context, userId string) (*types.User, error) {
-	row, _ := s.pool.Query(context,
+func (s *PgxStore) GetUser(ctx context.Context, userId string) (*types.User, error) {
+	row, _ := s.pool.Query(ctx,
 		`SELECT * FROM users WHERE id = $1`, userId)
 
 	user, err := pgx.CollectOneRow(row, pgx.RowToAddrOfStructByName[types.User])
 	if err != nil {
-		return nil, err
+		return nil, services.NewInternalServiceError(err)
 	}
 	return user, nil
 }
 
-func (s *PgxStore) UpdateUser(context context.Context, userId string, data *types.UserUpdate) error {
-	_, err := s.pool.Exec(context, `UPDATE users SET preferred_name = $1 WHERE id = $2`, data.PreferredName, userId)
+func (s *PgxStore) UpdateUser(ctx context.Context, userId string, data *types.UserUpdate) error {
+	_, err := s.pool.Exec(ctx, `UPDATE users SET preferred_name = $1 WHERE id = $2`, data.PreferredName, userId)
 
 	if err != nil {
-		return err
+		return services.NewInternalServiceError(err)
 	}
 
 	return nil

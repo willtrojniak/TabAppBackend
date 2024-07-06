@@ -1,20 +1,8 @@
 package types
 
 import (
-	"context"
 	"time"
 )
-
-type UserStore interface {
-	// Create user attempts to create a new user for the given email and returns their uniquely assigned Id.
-	// If a user with the given email already exists, their user Id should be returned.
-	CreateUser(context context.Context, data *UserCreate) error
-
-	//
-	GetUser(context context.Context, userId string) (*User, error)
-
-	UpdateUser(context context.Context, userId string, data *UserUpdate) error
-}
 
 type UserCreate struct {
 	Id    string `json:"id" db:"id" validate:"required,max=255"`
