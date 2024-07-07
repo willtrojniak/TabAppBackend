@@ -10,7 +10,8 @@ const (
 )
 
 type ShopUpdate struct {
-	Name string `json:"name" db:"name" validate:"required,min=1,max=64"`
+	Name           string   `json:"name" db:"name" validate:"required,min=1,max=64"`
+	PaymentMethods []string `json:"payment_methods" db:"payment_methods" validate:"dive,oneof='in person' 'chartstring'"`
 }
 
 type ShopCreate struct {
@@ -19,6 +20,6 @@ type ShopCreate struct {
 }
 
 type Shop struct {
-	Id uuid.UUID `json:"id" db:"id" validate:"required"`
+	Id uuid.UUID `json:"id" db:"id" validate:"required,uuid5"`
 	ShopCreate
 }

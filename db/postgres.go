@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/jackc/pgerrcode"
@@ -38,5 +39,6 @@ func handlePgxError(err error) error {
 	if errors.As(err, &pgerr) && pgerr.Code == pgerrcode.UniqueViolation {
 		return services.NewDataConflictServiceError(err)
 	}
+	slog.Warn("Database operation failed", "err", err)
 	return services.NewInternalServiceError(err)
 }

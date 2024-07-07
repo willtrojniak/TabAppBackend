@@ -82,11 +82,11 @@ func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, sho
 		return err
 	}
 
+	h.logger.Debug("Updating Shop", "id", shopId)
 	err = types.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}
-	h.logger.Debug("Updating Shop", "id", shopId)
 
 	err = h.store.UpdateShop(ctx, shopId, data)
 	if err != nil {

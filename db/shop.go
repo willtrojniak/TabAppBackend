@@ -26,7 +26,10 @@ func (s *PgxStore) CreateShop(ctx context.Context, data *types.ShopCreate) error
 func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types.Shop, error) {
 	// TODO: Dynamically change limit and offset
 	rows, err := s.pool.Query(ctx,
-		`SELECT * FROM shops ORDER BY shops.name LIMIT @limit OFFSET @offset`,
+		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
+    LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
+    GROUP BY shops.id
+    LIMIT @limit OFFSET @offset`,
 		pgx.NamedArgs{
 			"limit":  limit,
 			"offset": offset,
@@ -45,7 +48,10 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 
 func (s *PgxStore) GetShopById(ctx context.Context, shopId *uuid.UUID) (types.Shop, error) {
 	row, err := s.pool.Query(ctx,
-		`SELECT * FROM shops WHERE shops.id = @shopId`,
+		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
+    LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
+    WHERE shops.id = @shopId
+    GROUP BY shops.id`,
 		pgx.NamedArgs{
 			"shopId": shopId,
 		})
