@@ -69,13 +69,42 @@ func (s *PgxStore) GetShopById(ctx context.Context, shopId *uuid.UUID) (types.Sh
 }
 
 func (s *PgxStore) UpdateShop(ctx context.Context, shopId *uuid.UUID, data *types.ShopUpdate) error {
-	_, err := s.pool.Exec(ctx,
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx,
 		`UPDATE shops SET name = @name WHERE shops.id = @shopId`,
 		pgx.NamedArgs{
 			"name":   data.Name,
 			"shopId": shopId,
 		})
 
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"payment_methods"}, []string{"shop_id", "method"}, pgx.CopyFromSlice(len(data.PaymentMethods), func(i int) ([]any, error) {
+		return []any{shopId, data.PaymentMethods[i]}, nil
+	}))
+
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx,
+		`DELETE FROM payment_methods AS p WHERE p.shop_id = @shopId AND NOT (p.method = ANY (@methods))`,
+		pgx.NamedArgs{
+			"shopId":  shopId,
+			"methods": data.PaymentMethods,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	err = tx.Commit(ctx)
 	if err != nil {
 		return handlePgxError(err)
 	}
