@@ -15,11 +15,28 @@ func (s *PgxStore) CreateShop(ctx context.Context, data *types.ShopCreate) error
 		return services.NewInternalServiceError(err)
 	}
 
-	_, err = s.pool.Exec(ctx,
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	defer tx.Rollback(ctx)
+	_, err = tx.Exec(ctx,
 		`INSERT INTO shops (id, owner_id, name) VALUES ($1, $2, $3)`, id, data.OwnerId, data.Name)
 	if err != nil {
 		return handlePgxError(err)
 	}
+
+	err = s.setShopPaymentMethods(ctx, tx, &id, data.PaymentMethods)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
 	return nil
 }
 
@@ -29,6 +46,7 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
     GROUP BY shops.id
+    ORDER BY shops.name
     LIMIT @limit OFFSET @offset`,
 		pgx.NamedArgs{
 			"limit":  limit,
@@ -81,25 +99,11 @@ func (s *PgxStore) UpdateShop(ctx context.Context, shopId *uuid.UUID, data *type
 			"name":   data.Name,
 			"shopId": shopId,
 		})
-
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.CopyFrom(ctx, pgx.Identifier{"payment_methods"}, []string{"shop_id", "method"}, pgx.CopyFromSlice(len(data.PaymentMethods), func(i int) ([]any, error) {
-		return []any{shopId, data.PaymentMethods[i]}, nil
-	}))
-
-	if err != nil {
-		return handlePgxError(err)
-	}
-
-	_, err = tx.Exec(ctx,
-		`DELETE FROM payment_methods AS p WHERE p.shop_id = @shopId AND NOT (p.method = ANY (@methods))`,
-		pgx.NamedArgs{
-			"shopId":  shopId,
-			"methods": data.PaymentMethods,
-		})
+	err = s.setShopPaymentMethods(ctx, tx, shopId, data.PaymentMethods)
 	if err != nil {
 		return handlePgxError(err)
 	}
@@ -121,5 +125,27 @@ func (s *PgxStore) DeleteShop(ctx context.Context, shopId *uuid.UUID) error {
 	if err != nil {
 		return handlePgxError(err)
 	}
+	return nil
+}
+
+func (s *PgxStore) setShopPaymentMethods(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, methods []string) error {
+	_, err := tx.CopyFrom(ctx, pgx.Identifier{"payment_methods"}, []string{"shop_id", "method"}, pgx.CopyFromSlice(len(methods), func(i int) ([]any, error) {
+		return []any{shopId, methods[i]}, nil
+	}))
+
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx,
+		`DELETE FROM payment_methods AS p WHERE p.shop_id = @shopId AND NOT (p.method = ANY (@methods))`,
+		pgx.NamedArgs{
+			"shopId":  shopId,
+			"methods": methods,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
 	return nil
 }
