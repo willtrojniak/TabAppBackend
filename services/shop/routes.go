@@ -17,6 +17,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 
 	router.HandleFunc("POST /shops", h.handleCreateShop)
 	router.HandleFunc("GET /shops", h.handleGetShops)
+	router.HandleFunc("GET /payment-methods", h.handleGetPaymentMethods)
 
 	subrouter := http.NewServeMux()
 	router.Handle("/shops/", http.StripPrefix("/shops", subrouter))
@@ -125,4 +126,12 @@ func (h *Handler) handleDeleteShop(w http.ResponseWriter, r *http.Request) {
 		h.handleError(w, err)
 		return
 	}
+}
+
+func (h *Handler) handleGetPaymentMethods(w http.ResponseWriter, r *http.Request) {
+	methods := make([]types.PaymentMethod, 0)
+	methods = append(methods, types.PaymentMethodInPerson, types.PaymentMethodChartstring)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(methods)
 }
