@@ -58,3 +58,21 @@ func (h *Handler) UpdateCategory(ctx context.Context, session *sessions.Session,
 
 	return nil
 }
+
+func (h *Handler) DeleteCategory(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, categoryId *uuid.UUID) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return err
+	}
+
+	h.logger.Debug("Deleting category", "shopId", shopId, "categoryId", categoryId)
+
+	err = h.store.DeleteCategory(ctx, shopId, categoryId)
+	if err != nil {
+		return err
+	}
+	h.logger.Debug("Deleted category", "shopId", shopId, "categoryId", categoryId)
+
+	return nil
+
+}

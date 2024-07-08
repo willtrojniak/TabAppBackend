@@ -49,7 +49,8 @@ func (s *PgxStore) GetCategories(ctx context.Context, shopId *uuid.UUID) ([]type
 
 	rows, err := s.pool.Query(ctx,
 		`SELECT item_categories.* FROM item_categories
-    WHERE item_categories.shop_id = @shopId `,
+    WHERE item_categories.shop_id = @shopId
+    ORDER BY item_categories.index, item_categories.name`,
 		pgx.NamedArgs{
 			"shopId": shopId,
 		})
@@ -72,6 +73,25 @@ func (s *PgxStore) UpdateCategory(ctx context.Context, shopId *uuid.UUID, catego
 		pgx.NamedArgs{
 			"name":       data.Name,
 			"index":      data.Index,
+			"shopId":     shopId,
+			"categoryId": categoryId,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return services.NewNotFoundServiceError(nil)
+	}
+
+	return nil
+}
+
+func (s *PgxStore) DeleteCategory(ctx context.Context, shopId *uuid.UUID, categoryId *uuid.UUID) error {
+
+	result, err := s.pool.Exec(ctx, `
+    DELETE FROM item_categories WHERE shop_id = @shopId AND id = @categoryId`,
+		pgx.NamedArgs{
 			"shopId":     shopId,
 			"categoryId": categoryId,
 		})

@@ -15,20 +15,24 @@ const categoryIdParam = "categoryId"
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	h.logger.Info("Registering shop routes")
-
-	router.HandleFunc("POST /shops", h.handleCreateShop)
-	router.HandleFunc("GET /shops", h.handleGetShops)
-	router.HandleFunc("GET /payment-methods", h.handleGetPaymentMethods)
-
 	subrouter := http.NewServeMux()
 	router.Handle("/shops/", http.StripPrefix("/shops", subrouter))
 
+	// Payment Methods
+	router.HandleFunc("GET /payment-methods", h.handleGetPaymentMethods)
+
+	// Shops
+	router.HandleFunc("POST /shops", h.handleCreateShop)
+	router.HandleFunc("GET /shops", h.handleGetShops)
 	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}", shopIdParam), h.handleGetShopById)
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}", shopIdParam), h.handleUpdateShop)
 	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}", shopIdParam), h.handleDeleteShop)
+
+	// Categories
 	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/categories", shopIdParam), h.handleCreateCategory)
 	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/categories", shopIdParam), h.handleGetCategories)
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/categories/{%v}", shopIdParam, categoryIdParam), h.handleUpdateCategory)
+	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/categories/{%v}", shopIdParam, categoryIdParam), h.handleDeleteCategory)
 
 }
 
@@ -225,4 +229,31 @@ func (h *Handler) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 		h.handleError(w, err)
 		return
 	}
+}
+
+func (h *Handler) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	categoryId, err := uuid.Parse(r.PathValue(categoryIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	err = h.DeleteCategory(r.Context(), session, &shopId, &categoryId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
 }
