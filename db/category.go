@@ -64,3 +64,24 @@ func (s *PgxStore) GetCategories(ctx context.Context, shopId *uuid.UUID) ([]type
 
 	return categories, nil
 }
+
+func (s *PgxStore) UpdateCategory(ctx context.Context, shopId *uuid.UUID, categoryId *uuid.UUID, data *types.CategoryUpdate) error {
+
+	result, err := s.pool.Exec(ctx, `
+    UPDATE item_categories SET name = @name, index = @index WHERE shop_id = @shopId AND id = @categoryId`,
+		pgx.NamedArgs{
+			"name":       data.Name,
+			"index":      data.Index,
+			"shopId":     shopId,
+			"categoryId": categoryId,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return services.NewNotFoundServiceError(nil)
+	}
+
+	return nil
+}

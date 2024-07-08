@@ -37,3 +37,24 @@ func (h *Handler) GetCategories(ctx context.Context, shopId *uuid.UUID) ([]types
 	return categories, err
 
 }
+
+func (h *Handler) UpdateCategory(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, categoryId *uuid.UUID, data *types.CategoryUpdate) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return err
+	}
+
+	err = types.ValidateData(data, h.logger)
+	if err != nil {
+		return err
+	}
+	h.logger.Debug("Updating category", "shopId", shopId, "categoryId", categoryId)
+
+	err = h.store.UpdateCategory(ctx, shopId, categoryId, data)
+	if err != nil {
+		return err
+	}
+	h.logger.Debug("Updated category", "shopId", shopId, "categoryId", categoryId)
+
+	return nil
+}

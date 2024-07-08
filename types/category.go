@@ -4,7 +4,7 @@ import "github.com/google/uuid"
 
 type CategoryUpdate struct {
 	Name  string `json:"name" db:"name" validate:"required,min=1,max=64"`
-	Index int    `json:"index" db:"index" validate:"required"`
+	Index *int   `json:"index" db:"index" validate:"required"`
 }
 
 type CategoryCreate struct {

@@ -11,6 +11,7 @@ import (
 )
 
 const shopIdParam = "shopId"
+const categoryIdParam = "categoryId"
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	h.logger.Info("Registering shop routes")
@@ -27,6 +28,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}", shopIdParam), h.handleDeleteShop)
 	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/categories", shopIdParam), h.handleCreateCategory)
 	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/categories", shopIdParam), h.handleGetCategories)
+	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/categories/{%v}", shopIdParam, categoryIdParam), h.handleUpdateCategory)
 
 }
 
@@ -190,4 +192,37 @@ func (h *Handler) handleGetCategories(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(categories)
+}
+
+func (h *Handler) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	categoryId, err := uuid.Parse(r.PathValue(categoryIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	data := types.CategoryUpdate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.UpdateCategory(r.Context(), session, &shopId, &categoryId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
 }
