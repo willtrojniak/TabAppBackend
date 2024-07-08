@@ -20,6 +20,6 @@ type ShopCreate struct {
 }
 
 type Shop struct {
-	Id uuid.UUID `json:"id" db:"id" validate:"required,uuid5"`
+	Id uuid.UUID `json:"id" db:"id" validate:"required,uuid4"`
 	ShopCreate
 }

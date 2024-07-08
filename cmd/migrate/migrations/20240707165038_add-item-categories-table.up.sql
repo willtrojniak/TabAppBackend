@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS item_categories (
+  id UUID NOT NULL,
+  shop_id UUID NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  index SMALLINT NOT NULL,
+
+  PRIMARY KEY(id),
+  FOREIGN KEY(shop_id) REFERENCES shops(id) ON DELETE CASCADE
+);

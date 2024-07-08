@@ -25,6 +25,8 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}", shopIdParam), h.handleGetShopById)
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}", shopIdParam), h.handleUpdateShop)
 	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}", shopIdParam), h.handleDeleteShop)
+	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/categories", shopIdParam), h.handleCreateCategory)
+	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/categories", shopIdParam), h.handleGetCategories)
 
 }
 
@@ -40,6 +42,15 @@ func (h *Handler) handleCreateShop(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.handleError(w, err)
 		return
+	}
+
+	if data.OwnerId == "" {
+		userId, err := session.GetUserId()
+		if err != nil {
+			h.handleError(w, err)
+			return
+		}
+		data.OwnerId = userId
 	}
 
 	err = h.CreateShop(r.Context(), session, data)
@@ -134,4 +145,49 @@ func (h *Handler) handleGetPaymentMethods(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(methods)
+}
+
+func (h *Handler) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	data := types.CategoryCreate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	data.ShopId = shopId
+
+	err = h.CreateCategory(r.Context(), session, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleGetCategories(w http.ResponseWriter, r *http.Request) {
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	categories, err := h.GetCategories(r.Context(), &shopId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(categories)
 }

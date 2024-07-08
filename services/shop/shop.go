@@ -35,10 +35,6 @@ func (h *Handler) CreateShop(ctx context.Context, session *sessions.Session, dat
 		return err
 	}
 
-	if data.OwnerId == "" {
-		data.OwnerId = userId
-	}
-
 	// Data validation
 	err = types.ValidateData(data, h.logger)
 	if err != nil {
