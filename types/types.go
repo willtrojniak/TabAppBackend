@@ -12,6 +12,7 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 )
 
 var Validate *validator.Validate
@@ -67,8 +68,10 @@ func ReadRequestJson(r *http.Request, dest interface{}) error {
 			return services.NewServiceError(err, http.StatusBadRequest, fmt.Sprintf("Request body contains an invalid value for the %q field of type %v (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Type, unmarshalTypeError.Offset))
 		case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
 			return services.NewServiceError(err, http.StatusBadRequest, fmt.Sprintf("Unexpected EOF in request body"))
+		case uuid.IsInvalidLengthError(err):
+			return services.NewServiceError(err, http.StatusBadRequest, fmt.Sprintf("Invalid UUID value"))
 		default:
-			slog.Warn("Issue reading JSON from request body")
+			slog.Warn("Issue reading JSON from request body", "err", err)
 			return services.NewInternalServiceError(err)
 		}
 	}

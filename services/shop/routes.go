@@ -39,6 +39,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/items", shopIdParam), h.handleCreateItem)
 	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/items", shopIdParam), h.handleGetItems)
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleUpdateItem)
+	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleGetItem)
 	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleDeleteItem)
 }
 
@@ -341,6 +342,28 @@ func (h *Handler) handleUpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func (h *Handler) handleGetItem(w http.ResponseWriter, r *http.Request) {
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
+		return
+	}
+
+	item, err := h.GetItem(r.Context(), &shopId, &itemId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(item)
 }
 
 func (h *Handler) handleDeleteItem(w http.ResponseWriter, r *http.Request) {

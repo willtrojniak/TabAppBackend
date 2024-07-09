@@ -4,6 +4,6 @@ CREATE TABLE IF NOT EXISTS item_categories (
   name VARCHAR(255) NOT NULL,
   index SMALLINT NOT NULL,
 
-  PRIMARY KEY(id),
+  PRIMARY KEY(shop_id, id),
   FOREIGN KEY(shop_id) REFERENCES shops(id) ON DELETE CASCADE
 );

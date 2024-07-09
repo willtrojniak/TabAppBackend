@@ -56,7 +56,7 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 		return nil, handlePgxError(err)
 	}
 
-	shops, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Shop])
+	shops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.Shop])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}
@@ -77,7 +77,7 @@ func (s *PgxStore) GetShopById(ctx context.Context, shopId *uuid.UUID) (types.Sh
 		return types.Shop{}, handlePgxError(err)
 	}
 
-	shop, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Shop])
+	shop, err := pgx.CollectOneRow(row, pgx.RowToStructByNameLax[types.Shop])
 	if err != nil {
 		return types.Shop{}, handlePgxError(err)
 	}

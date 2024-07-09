@@ -58,7 +58,7 @@ func (s *PgxStore) GetCategories(ctx context.Context, shopId *uuid.UUID) ([]type
 		return nil, handlePgxError(err)
 	}
 
-	categories, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Category])
+	categories, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.Category])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}

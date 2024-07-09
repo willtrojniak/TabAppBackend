@@ -30,7 +30,7 @@ func (h *Handler) CreateItem(ctx context.Context, session *sessions.Session, dat
 	return nil
 }
 
-func (h *Handler) GetItems(ctx context.Context, shopId *uuid.UUID) ([]types.Item, error) {
+func (h *Handler) GetItems(ctx context.Context, shopId *uuid.UUID) ([]types.ItemOverview, error) {
 	items, err := h.store.GetItems(ctx, shopId)
 	if err != nil {
 		return nil, err
@@ -59,6 +59,15 @@ func (h *Handler) UpdateItem(ctx context.Context, session *sessions.Session, sho
 
 	return nil
 
+}
+
+func (h *Handler) GetItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID) (types.Item, error) {
+	item, err := h.store.GetItem(ctx, shopId, itemId)
+	if err != nil {
+		return types.Item{}, err
+	}
+
+	return item, nil
 }
 
 func (h *Handler) DeleteItem(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, itemId *uuid.UUID) error {
