@@ -129,9 +129,21 @@ func (s *PgxStore) DeleteShop(ctx context.Context, shopId *uuid.UUID) error {
 }
 
 func (s *PgxStore) setShopPaymentMethods(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, methods []string) error {
-	_, err := tx.CopyFrom(ctx, pgx.Identifier{"payment_methods"}, []string{"shop_id", "method"}, pgx.CopyFromSlice(len(methods), func(i int) ([]any, error) {
+	_, err := tx.Exec(ctx, `
+    CREATE TEMPORARY TABLE _temp_upsert_payment_methods (LIKE payment_methods INCLUDING ALL ) ON COMMIT DROP`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_payment_methods"}, []string{"shop_id", "method"}, pgx.CopyFromSlice(len(methods), func(i int) ([]any, error) {
 		return []any{shopId, methods[i]}, nil
 	}))
+
+	_, err = tx.Exec(ctx, `
+    INSERT INTO payment_methods SELECT * FROM _temp_upsert_payment_methods ON CONFLICT DO NOTHING`)
+	if err != nil {
+		return handlePgxError(err)
+	}
 
 	if err != nil {
 		return handlePgxError(err)
