@@ -33,7 +33,10 @@ func (s *PgxStore) CreateCategory(ctx context.Context, data *types.CategoryCreat
 		return handlePgxError(err)
 	}
 
-	// TODO: Implement setting category items
+	err = s.setCategoryItems(ctx, tx, &data.ShopId, &id, data.ItemIds)
+	if err != nil {
+		return err
+	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
@@ -45,11 +48,12 @@ func (s *PgxStore) CreateCategory(ctx context.Context, data *types.CategoryCreat
 
 func (s *PgxStore) GetCategories(ctx context.Context, shopId *uuid.UUID) ([]types.Category, error) {
 
-	// TODO: Add associated item ids
-
 	rows, err := s.pool.Query(ctx,
-		`SELECT item_categories.* FROM item_categories
+		`SELECT item_categories.*, array_remove(array_agg(items.id), null) AS item_ids FROM item_categories
+    LEFT JOIN items_to_categories ON item_categories.shop_id = items_to_categories.shop_id AND item_categories.id = items_to_categories.item_category_id
+    LEFT JOIN items ON items_to_categories.shop_id = items.shop_id AND items_to_categories.item_id = items.id
     WHERE item_categories.shop_id = @shopId
+    GROUP BY item_categories.shop_id, item_categories.id
     ORDER BY item_categories.index, item_categories.name`,
 		pgx.NamedArgs{
 			"shopId": shopId,
@@ -67,8 +71,13 @@ func (s *PgxStore) GetCategories(ctx context.Context, shopId *uuid.UUID) ([]type
 }
 
 func (s *PgxStore) UpdateCategory(ctx context.Context, shopId *uuid.UUID, categoryId *uuid.UUID, data *types.CategoryUpdate) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+	defer tx.Rollback(ctx)
 
-	result, err := s.pool.Exec(ctx, `
+	result, err := tx.Exec(ctx, `
     UPDATE item_categories SET name = @name, index = @index WHERE shop_id = @shopId AND id = @categoryId`,
 		pgx.NamedArgs{
 			"name":       data.Name,
@@ -82,6 +91,16 @@ func (s *PgxStore) UpdateCategory(ctx context.Context, shopId *uuid.UUID, catego
 
 	if result.RowsAffected() == 0 {
 		return services.NewNotFoundServiceError(nil)
+	}
+
+	err = s.setCategoryItems(ctx, tx, shopId, categoryId, data.ItemIds)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return handlePgxError(err)
 	}
 
 	return nil

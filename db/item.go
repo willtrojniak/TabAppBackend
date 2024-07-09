@@ -181,3 +181,37 @@ func (s *PgxStore) setItemCategories(ctx context.Context, tx pgx.Tx, shopId *uui
 
 	return nil
 }
+
+func (s *PgxStore) setCategoryItems(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, categoryId *uuid.UUID, itemIds []uuid.UUID) error {
+	_, err := tx.Exec(ctx, `
+    CREATE TEMPORARY TABLE _temp_upsert_items_to_categories (LIKE items_to_categories INCLUDING ALL ) ON COMMIT DROP`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_items_to_categories"}, []string{"shop_id", "item_id", "item_category_id", "index"}, pgx.CopyFromSlice(len(itemIds), func(i int) ([]any, error) {
+		return []any{shopId, itemIds[i], categoryId, i}, nil
+	}))
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx, `
+    INSERT INTO items_to_categories SELECT * FROM _temp_upsert_items_to_categories ON CONFLICT DO NOTHING`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx,
+		`DELETE FROM items_to_categories WHERE shop_id = @shopId AND item_category_id = @categoryId AND NOT (item_id = ANY (@itemIds))`,
+		pgx.NamedArgs{
+			"shopId":     shopId,
+			"itemIds":    itemIds,
+			"categoryId": categoryId,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	return nil
+}

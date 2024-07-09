@@ -3,8 +3,9 @@ package types
 import "github.com/google/uuid"
 
 type CategoryUpdate struct {
-	Name  string `json:"name" db:"name" validate:"required,min=1,max=64"`
-	Index *int   `json:"index" db:"index" validate:"required"`
+	Name    string      `json:"name" db:"name" validate:"required,min=1,max=64"`
+	Index   *int        `json:"index" db:"index" validate:"required"`
+	ItemIds []uuid.UUID `json:"item_ids" db:"item_ids" validate:"required,dive,uuid4"`
 }
 
 type CategoryCreate struct {
