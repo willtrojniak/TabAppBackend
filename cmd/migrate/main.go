@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/WilliamTrojniak/TabAppBackend/env"
 	"github.com/golang-migrate/migrate/v4"
@@ -43,5 +44,13 @@ func main() {
 		}
 		return
 	}
+
+	if val, err := strconv.Atoi(cmd); err == nil {
+		if err := m.Steps(val); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
 	log.Fatal("Expected 'up', 'down', or 'drop', got: " + cmd)
 }

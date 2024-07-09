@@ -12,6 +12,7 @@ import (
 
 const shopIdParam = "shopId"
 const categoryIdParam = "categoryId"
+const itemIdParam = "itemId"
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	h.logger.Info("Registering shop routes")
@@ -34,6 +35,11 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/categories/{%v}", shopIdParam, categoryIdParam), h.handleUpdateCategory)
 	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/categories/{%v}", shopIdParam, categoryIdParam), h.handleDeleteCategory)
 
+	// Items
+	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/items", shopIdParam), h.handleCreateItem)
+	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/items", shopIdParam), h.handleGetItems)
+	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleUpdateItem)
+	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleDeleteItem)
 }
 
 func (h *Handler) handleCreateShop(w http.ResponseWriter, r *http.Request) {
@@ -251,6 +257,112 @@ func (h *Handler) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.DeleteCategory(r.Context(), session, &shopId, &categoryId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+}
+
+func (h *Handler) handleCreateItem(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	data := types.ItemCreate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	data.ShopId = shopId
+
+	err = h.CreateItem(r.Context(), session, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleGetItems(w http.ResponseWriter, r *http.Request) {
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	items, err := h.GetItems(r.Context(), &shopId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
+}
+
+func (h *Handler) handleUpdateItem(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
+		return
+	}
+
+	data := types.ItemUpdate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.UpdateItem(r.Context(), session, &shopId, &itemId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+}
+
+func (h *Handler) handleDeleteItem(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
+		return
+	}
+
+	err = h.DeleteItem(r.Context(), session, &shopId, &itemId)
 	if err != nil {
 		h.handleError(w, err)
 		return
