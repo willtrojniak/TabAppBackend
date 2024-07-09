@@ -33,7 +33,10 @@ func (s *PgxStore) CreateItem(ctx context.Context, data *types.ItemCreate) error
 		return handlePgxError(err)
 	}
 
-	// TODO: Implement setting item categories, variants, substitions and addons
+	err = s.setItemCategories(ctx, tx, &data.ShopId, &id, data.CategoryIds)
+	if err != nil {
+		return err
+	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
@@ -89,7 +92,13 @@ func (s *PgxStore) GetItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.
 }
 
 func (s *PgxStore) UpdateItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID, data *types.ItemUpdate) error {
-	result, err := s.pool.Exec(ctx, `
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	defer tx.Rollback(ctx)
+	result, err := tx.Exec(ctx, `
     UPDATE items SET name = @name, base_price = @base_price
     WHERE shop_id = @shopId AND id = @itemId`,
 		pgx.NamedArgs{
@@ -105,6 +114,16 @@ func (s *PgxStore) UpdateItem(ctx context.Context, shopId *uuid.UUID, itemId *uu
 
 	if result.RowsAffected() == 0 {
 		return services.NewNotFoundServiceError(nil)
+	}
+
+	err = s.setItemCategories(ctx, tx, shopId, itemId, data.CategoryIds)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return handlePgxError(err)
 	}
 
 	return nil
@@ -124,6 +143,40 @@ func (s *PgxStore) DeleteItem(ctx context.Context, shopId *uuid.UUID, itemId *uu
 
 	if result.RowsAffected() == 0 {
 		return services.NewNotFoundServiceError(nil)
+	}
+
+	return nil
+}
+
+func (s *PgxStore) setItemCategories(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, itemId *uuid.UUID, categoryIds []uuid.UUID) error {
+	_, err := tx.Exec(ctx, `
+    CREATE TEMPORARY TABLE _temp_upsert_items_to_categories (LIKE items_to_categories INCLUDING ALL ) ON COMMIT DROP`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_items_to_categories"}, []string{"shop_id", "item_id", "item_category_id", "index"}, pgx.CopyFromSlice(len(categoryIds), func(i int) ([]any, error) {
+		return []any{shopId, itemId, categoryIds[i], 0}, nil
+	}))
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx, `
+    INSERT INTO items_to_categories SELECT * FROM _temp_upsert_items_to_categories ON CONFLICT DO NOTHING`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx,
+		`DELETE FROM items_to_categories WHERE shop_id = @shopId AND item_id = @itemId AND NOT (item_category_id = ANY (@categories))`,
+		pgx.NamedArgs{
+			"shopId":     shopId,
+			"itemId":     itemId,
+			"categories": categoryIds,
+		})
+	if err != nil {
+		return handlePgxError(err)
 	}
 
 	return nil

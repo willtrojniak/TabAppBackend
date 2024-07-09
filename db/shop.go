@@ -138,13 +138,12 @@ func (s *PgxStore) setShopPaymentMethods(ctx context.Context, tx pgx.Tx, shopId 
 	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_payment_methods"}, []string{"shop_id", "method"}, pgx.CopyFromSlice(len(methods), func(i int) ([]any, error) {
 		return []any{shopId, methods[i]}, nil
 	}))
-
-	_, err = tx.Exec(ctx, `
-    INSERT INTO payment_methods SELECT * FROM _temp_upsert_payment_methods ON CONFLICT DO NOTHING`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
+	_, err = tx.Exec(ctx, `
+    INSERT INTO payment_methods SELECT * FROM _temp_upsert_payment_methods ON CONFLICT DO NOTHING`)
 	if err != nil {
 		return handlePgxError(err)
 	}
