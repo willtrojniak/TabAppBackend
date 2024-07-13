@@ -38,6 +38,11 @@ func (s *PgxStore) CreateItem(ctx context.Context, data *types.ItemCreate) error
 		return err
 	}
 
+	err = s.setItemAddons(ctx, tx, &data.ShopId, &id, data.AddonIds)
+	if err != nil {
+		return err
+	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -126,6 +131,11 @@ func (s *PgxStore) UpdateItem(ctx context.Context, shopId *uuid.UUID, itemId *uu
 	}
 
 	err = s.setItemCategories(ctx, tx, shopId, itemId, data.CategoryIds)
+	if err != nil {
+		return err
+	}
+
+	err = s.setItemAddons(ctx, tx, shopId, itemId, data.AddonIds)
 	if err != nil {
 		return err
 	}
@@ -286,6 +296,40 @@ func (s *PgxStore) setCategoryItems(ctx context.Context, tx pgx.Tx, shopId *uuid
 			"shopId":     shopId,
 			"itemIds":    itemIds,
 			"categoryId": categoryId,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	return nil
+}
+
+func (s *PgxStore) setItemAddons(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, itemId *uuid.UUID, addonItemIds []uuid.UUID) error {
+	_, err := tx.Exec(ctx, `
+    CREATE TEMPORARY TABLE _temp_upsert_item_addons (LIKE item_addons INCLUDING ALL ) ON COMMIT DROP`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_item_addons"}, []string{"shop_id", "item_id", "addon_id", "index"}, pgx.CopyFromSlice(len(addonItemIds), func(i int) ([]any, error) {
+		return []any{shopId, itemId, addonItemIds[i], i}, nil
+	}))
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx, `
+    INSERT INTO item_addons SELECT * FROM _temp_upsert_item_addons ON CONFLICT DO NOTHING`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx,
+		`DELETE FROM item_addons WHERE item_id = @itemId AND shop_id = @shopId AND NOT (addon_id = ANY (@addonItemIds))`,
+		pgx.NamedArgs{
+			"shopId":       shopId,
+			"itemId":       itemId,
+			"addonItemIds": addonItemIds,
 		})
 	if err != nil {
 		return handlePgxError(err)
