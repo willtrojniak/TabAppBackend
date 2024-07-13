@@ -72,11 +72,14 @@ func (s *PgxStore) GetItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.
 	rows, err := s.pool.Query(ctx, `
     SELECT items.id, items.name, items.base_price,
     COALESCE(json_agg(item_categories ORDER BY item_categories.name) FILTER (WHERE item_categories.id IS NOT NULL), '[]') AS categories, 
-    COALESCE(json_agg(item_variants ORDER BY item_variants.index) FILTER (WHERE item_variants.id IS NOT NULL), '[]') AS variants
+    COALESCE(json_agg(item_variants ORDER BY item_variants.index) FILTER (WHERE item_variants.id IS NOT NULL), '[]') AS variants,
+    COALESCE(json_agg(addons_table ORDER BY item_addons.index) FILTER (WHERE addons_table.id IS NOT NULL), '[]') AS addons
     FROM items
     LEFT JOIN items_to_categories ON items.shop_id = items_to_categories.shop_id AND items.id = items_to_categories.item_id
     LEFT JOIN item_categories ON items_to_categories.shop_id = item_categories.shop_id AND items_to_categories.item_category_id = item_categories.id
     LEFT JOIN item_variants ON items.shop_id = item_variants.shop_id AND items.id = item_variants.item_id
+    LEFT JOIN item_addons ON items.id = item_addons.item_id AND items.shop_id = item_addons.shop_id
+    LEFT JOIN items AS addons_table ON item_addons.addon_id = addons_table.id AND item_addons.shop_id = addons_table.shop_id
     WHERE items.shop_id = @shopId AND items.id = @itemId
     GROUP BY items.shop_id, items.id`,
 		pgx.NamedArgs{

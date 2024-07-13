@@ -10,6 +10,7 @@ type itemBase struct {
 type ItemUpdate struct {
 	itemBase
 	CategoryIds []uuid.UUID `json:"category_ids" db:"category_ids" validate:"required,dive,uuid4"`
+	AddonIds    []uuid.UUID `json:"addon_ids" db:"addon_ids" validate:"required,dive,uuid4"`
 }
 
 type ItemCreate struct {
@@ -24,8 +25,9 @@ type ItemOverview struct {
 
 type Item struct {
 	ItemOverview
-	Categories   []CategoryOverview `json:"categories" db:"categories" validate:"required,dive"`
-	ItemVariants []ItemVariant      `json:"variants" db:"variants" validate:"required,dive"`
+	Categories []CategoryOverview `json:"categories" db:"categories" validate:"required,dive"`
+	Variants   []ItemVariant      `json:"variants" db:"variants" validate:"required,dive"`
+	Addons     []ItemOverview     `json:"addons" db:"addons" validate:"required,dive"`
 }
 
 func (item *Item) GetOverview() ItemOverview {
