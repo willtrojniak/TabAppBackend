@@ -10,10 +10,13 @@ import (
 	"github.com/google/uuid"
 )
 
-const shopIdParam = "shopId"
-const categoryIdParam = "categoryId"
-const itemIdParam = "itemId"
-const itemVariantIdParam = "itemVariantId"
+const (
+	shopIdParam              = "shopId"
+	categoryIdParam          = "categoryId"
+	itemIdParam              = "itemId"
+	itemVariantIdParam       = "itemVariantId"
+	substitutionGroupIdParam = "substitutionGroupId"
+)
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	h.logger.Info("Registering shop routes")
@@ -47,6 +50,12 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/items/{%v}/variants", shopIdParam, itemIdParam), h.handleCreateItemVariant)
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/items/{%v}/variants/{%v}", shopIdParam, itemIdParam, itemVariantIdParam), h.handleUpdateItemVariant)
 	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/items/{%v}/variants/{%v}", shopIdParam, itemIdParam, itemVariantIdParam), h.handleDeleteItemVariant)
+
+	// Item Substitution Groups
+	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/substitutions", shopIdParam), h.handleCreateSubstitutionGroup)
+	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/substitutions/{%v}", shopIdParam, substitutionGroupIdParam), h.handleUpdateSubstitutionGroup)
+	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/substitutions/{%v}", shopIdParam, substitutionGroupIdParam), h.handleDeleteSubstitutionGroup)
+
 }
 
 func (h *Handler) handleCreateShop(w http.ResponseWriter, r *http.Request) {
@@ -503,4 +512,92 @@ func (h *Handler) handleDeleteItemVariant(w http.ResponseWriter, r *http.Request
 		h.handleError(w, err)
 		return
 	}
+}
+
+func (h *Handler) handleCreateSubstitutionGroup(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	data := types.SubstitutionGroupCreate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	data.ShopId = shopId
+
+	err = h.CreateSubstitutionGroup(r.Context(), session, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleUpdateSubstitutionGroup(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	substitutionGroupId, err := uuid.Parse(r.PathValue(substitutionGroupIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid substitution id"))
+		return
+	}
+
+	data := types.SubstitutionGroupUpdate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.UpdateSubstitutionGroup(r.Context(), session, &shopId, &substitutionGroupId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleDeleteSubstitutionGroup(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	substitutionGroupId, err := uuid.Parse(r.PathValue(substitutionGroupIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid substitution id"))
+		return
+	}
+
+	err = h.DeleteSubstitutionGroup(r.Context(), session, &shopId, &substitutionGroupId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
 }
