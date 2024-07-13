@@ -13,6 +13,7 @@ import (
 const shopIdParam = "shopId"
 const categoryIdParam = "categoryId"
 const itemIdParam = "itemId"
+const itemVariantIdParam = "itemVariantId"
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	h.logger.Info("Registering shop routes")
@@ -41,6 +42,11 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleUpdateItem)
 	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleGetItem)
 	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleDeleteItem)
+
+	// Item Variants
+	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/items/{%v}/variants", shopIdParam, itemIdParam), h.handleCreateItemVariant)
+	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/items/{%v}/variants/{%v}", shopIdParam, itemIdParam, itemVariantIdParam), h.handleUpdateItemVariant)
+	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/items/{%v}/variants/{%v}", shopIdParam, itemIdParam, itemVariantIdParam), h.handleDeleteItemVariant)
 }
 
 func (h *Handler) handleCreateShop(w http.ResponseWriter, r *http.Request) {
@@ -391,4 +397,110 @@ func (h *Handler) handleDeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func (h *Handler) handleCreateItemVariant(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
+		return
+	}
+
+	data := types.ItemVariantCreate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	data.ShopId = shopId
+	data.ItemId = itemId
+
+	err = h.CreateItemVariant(r.Context(), session, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	return
+}
+
+func (h *Handler) handleUpdateItemVariant(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
+		return
+	}
+	variantId, err := uuid.Parse(r.PathValue(itemVariantIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid item variant id"))
+		return
+	}
+
+	data := types.ItemVariantUpdate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.UpdateItemVariant(r.Context(), session, &shopId, &itemId, &variantId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleDeleteItemVariant(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
+		return
+	}
+	variantId, err := uuid.Parse(r.PathValue(itemVariantIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid item variant id"))
+		return
+	}
+
+	err = h.DeleteItemVariant(r.Context(), session, &shopId, &itemId, &variantId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
 }

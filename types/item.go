@@ -2,16 +2,13 @@ package types
 
 import "github.com/google/uuid"
 
-type ItemOverview struct {
-	Name      string    `json:"name" db:"name" validate:"required,min=1,max=64"`
-	BasePrice *float32  `json:"base_price" db:"base_price" validate:"required,gte=0"`
-	ShopId    uuid.UUID `json:"shop_id" db:"shop_id" validate:"required,uuid4"`
-	Id        uuid.UUID `json:"id" db:"id" validate:"required,uuid4"`
+type itemBase struct {
+	Name      string   `json:"name" db:"name" validate:"required,min=1,max=64"`
+	BasePrice *float32 `json:"base_price" db:"base_price" validate:"required,gte=0"`
 }
 
 type ItemUpdate struct {
-	Name        string      `json:"name" db:"name" validate:"required,min=1,max=64"`
-	BasePrice   *float32    `json:"base_price" db:"base_price" validate:"required,gte=0"`
+	itemBase
 	CategoryIds []uuid.UUID `json:"category_ids" db:"category_ids" validate:"required,dive,uuid4"`
 }
 
@@ -20,16 +17,40 @@ type ItemCreate struct {
 	ShopId uuid.UUID `json:"shop_id" db:"shop_id" validate:"required,uuid4"`
 }
 
-type Item struct {
-	ItemCreate
+type ItemOverview struct {
+	itemBase
 	Id uuid.UUID `json:"id" db:"id" validate:"required,uuid4"`
+}
+
+type Item struct {
+	ItemOverview
+	CategoryIds  []uuid.UUID   `json:"category_ids" db:"category_ids" validate:"required,dive,uuid4"`
+	ItemVariants []ItemVariant `json:"variants" db:"variants" validate:"required,dive"`
 }
 
 func (item *Item) GetOverview() ItemOverview {
 	return ItemOverview{
-		Id:        item.Id,
-		ShopId:    item.Id,
-		Name:      item.Name,
-		BasePrice: item.BasePrice,
+		Id: item.Id,
+		itemBase: itemBase{
+			Name:      item.Name,
+			BasePrice: item.BasePrice,
+		},
 	}
+}
+
+type ItemVariantUpdate struct {
+	Name  string   `json:"name" db:"name" validate:"required,min=1,max=64"`
+	Price *float32 `json:"price" db:"price" validate:"required,gte=0"`
+	Index *int     `json:"index" db:"index" validate:"required"`
+}
+
+type ItemVariantCreate struct {
+	ItemVariantUpdate
+	ShopId uuid.UUID `json:"shop_id" db:"shop_id" validate:"required,uuid4"`
+	ItemId uuid.UUID `json:"item_id" db:"item_id" validate:"required,uuid4"`
+}
+
+type ItemVariant struct {
+	ItemVariantUpdate
+	Id uuid.UUID `json:"id" db:"id" validate:"required,uuid4"`
 }

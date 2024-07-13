@@ -84,3 +84,55 @@ func (h *Handler) DeleteItem(ctx context.Context, session *sessions.Session, sho
 
 	return nil
 }
+
+func (h *Handler) CreateItemVariant(ctx context.Context, session *sessions.Session, data *types.ItemVariantCreate) error {
+	err := h.AuthorizeModifyShop(ctx, session, &data.ShopId)
+	if err != nil {
+		return err
+	}
+
+	err = types.ValidateData(data, h.logger)
+	if err != nil {
+		return err
+	}
+
+	err = h.store.CreateItemVariant(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *Handler) UpdateItemVariant(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, itemId *uuid.UUID, variantId *uuid.UUID, data *types.ItemVariantUpdate) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return err
+	}
+
+	err = types.ValidateData(data, h.logger)
+	if err != nil {
+		return err
+	}
+
+	err = h.store.UpdateItemVariant(ctx, shopId, itemId, variantId, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *Handler) DeleteItemVariant(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, itemId *uuid.UUID, variantId *uuid.UUID) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return err
+	}
+
+	err = h.store.DeleteItemVariant(ctx, shopId, itemId, variantId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

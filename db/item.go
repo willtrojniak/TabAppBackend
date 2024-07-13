@@ -48,7 +48,9 @@ func (s *PgxStore) CreateItem(ctx context.Context, data *types.ItemCreate) error
 
 func (s *PgxStore) GetItems(ctx context.Context, shopId *uuid.UUID) ([]types.ItemOverview, error) {
 	rows, err := s.pool.Query(ctx, `
-    SELECT * FROM items WHERE shop_id = @shopId`,
+    SELECT items.base_price, items.name, items.id
+    FROM items
+    WHERE items.shop_id = @shopId`,
 		pgx.NamedArgs{
 			"shopId": shopId,
 		})
@@ -68,10 +70,14 @@ func (s *PgxStore) GetItems(ctx context.Context, shopId *uuid.UUID) ([]types.Ite
 
 func (s *PgxStore) GetItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID) (types.Item, error) {
 	rows, err := s.pool.Query(ctx, `
-    SELECT items.*, array_remove(array_agg(item_categories.id), null) as category_ids FROM items
+    SELECT items.id, items.name, items.base_price,
+    array_remove(array_agg(item_categories.id), null) AS category_ids,
+    COALESCE(json_agg(item_variants) FILTER (WHERE item_variants.id IS NOT NULL), '[]') AS variants
+    FROM items
     LEFT JOIN items_to_categories ON items.shop_id = items_to_categories.shop_id AND items.id = items_to_categories.item_id
     LEFT JOIN item_categories ON items_to_categories.shop_id = item_categories.shop_id AND items_to_categories.item_category_id = item_categories.id
-    WHERE items.shop_id = @shopId and items.id = @itemId
+    LEFT JOIN item_variants ON items.shop_id = item_variants.shop_id AND items.id = item_variants.item_id
+    WHERE items.shop_id = @shopId AND items.id = @itemId
     GROUP BY items.shop_id, items.id`,
 		pgx.NamedArgs{
 			"shopId": shopId,
@@ -137,6 +143,75 @@ func (s *PgxStore) DeleteItem(ctx context.Context, shopId *uuid.UUID, itemId *uu
 			"shopId": shopId,
 			"itemId": itemId,
 		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return services.NewNotFoundServiceError(nil)
+	}
+
+	return nil
+}
+
+func (s *PgxStore) CreateItemVariant(ctx context.Context, data *types.ItemVariantCreate) error {
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return services.NewInternalServiceError(err)
+	}
+
+	_, err = s.pool.Exec(ctx, `
+    INSERT INTO item_variants (shop_id, item_id, id, name, price, index) VALUES (@shopId, @itemId, @id, @name, @price, @index)`,
+		pgx.NamedArgs{
+			"shopId": data.ShopId,
+			"itemId": data.ItemId,
+			"id":     id,
+			"name":   data.Name,
+			"price":  data.Price,
+			"index":  data.Index,
+		})
+
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	return nil
+}
+
+func (s *PgxStore) UpdateItemVariant(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID, variantId *uuid.UUID, data *types.ItemVariantUpdate) error {
+	result, err := s.pool.Exec(ctx, `
+    UPDATE item_variants SET (name, price, index) = (@name, @price, @index)
+    WHERE id = @id AND item_id = @itemId AND shop_id = @shopId`,
+		pgx.NamedArgs{
+			"shopId": shopId,
+			"itemId": itemId,
+			"id":     variantId,
+			"name":   data.Name,
+			"price":  data.Price,
+			"index":  data.Index,
+		})
+
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return services.NewNotFoundServiceError(nil)
+	}
+
+	return nil
+}
+
+func (s *PgxStore) DeleteItemVariant(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID, variantId *uuid.UUID) error {
+	result, err := s.pool.Exec(ctx, `
+    DELETE FROM item_variants 
+    WHERE id = @id AND item_id = @itemId AND shop_id = @shopId`,
+		pgx.NamedArgs{
+			"shopId": shopId,
+			"itemId": itemId,
+			"id":     variantId,
+		})
+
 	if err != nil {
 		return handlePgxError(err)
 	}
