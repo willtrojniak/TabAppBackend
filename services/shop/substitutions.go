@@ -46,6 +46,16 @@ func (h *Handler) UpdateSubstitutionGroup(ctx context.Context, session *sessions
 	return nil
 }
 
+func (h *Handler) GetSubstitutionGroups(ctx context.Context, shopId *uuid.UUID) ([]types.SubstitutionGroup, error) {
+	groups, err := h.store.GetSubstitutionGroups(ctx, shopId)
+	if err != nil {
+		return nil, err
+	}
+
+	return groups, err
+
+}
+
 func (h *Handler) DeleteSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, substitutionGroupId *uuid.UUID) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {

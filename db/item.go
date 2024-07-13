@@ -43,6 +43,11 @@ func (s *PgxStore) CreateItem(ctx context.Context, data *types.ItemCreate) error
 		return err
 	}
 
+	err = s.setItemSubstitutionGroups(ctx, tx, &data.ShopId, &id, data.SubstitutionGroupIds)
+	if err != nil {
+		return err
+	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -78,13 +83,29 @@ func (s *PgxStore) GetItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.
     SELECT items.id, items.name, items.base_price,
     COALESCE(json_agg(item_categories ORDER BY item_categories.name) FILTER (WHERE item_categories.id IS NOT NULL), '[]') AS categories, 
     COALESCE(json_agg(item_variants ORDER BY item_variants.index) FILTER (WHERE item_variants.id IS NOT NULL), '[]') AS variants,
-    COALESCE(json_agg(addons_table ORDER BY item_addons.index) FILTER (WHERE addons_table.id IS NOT NULL), '[]') AS addons
+    COALESCE(json_agg(addons_table ORDER BY item_addons.index) FILTER (WHERE addons_table.id IS NOT NULL), '[]') AS addons,
+    COALESCE(json_agg(substitution_groups ORDER BY substitution_groups.index) FILTER (WHERE substitution_groups.id IS NOT NULL), '[]') AS substitution_groups
     FROM items
     LEFT JOIN items_to_categories ON items.shop_id = items_to_categories.shop_id AND items.id = items_to_categories.item_id
     LEFT JOIN item_categories ON items_to_categories.shop_id = item_categories.shop_id AND items_to_categories.item_category_id = item_categories.id
     LEFT JOIN item_variants ON items.shop_id = item_variants.shop_id AND items.id = item_variants.item_id
     LEFT JOIN item_addons ON items.id = item_addons.item_id AND items.shop_id = item_addons.shop_id
     LEFT JOIN items AS addons_table ON item_addons.addon_id = addons_table.id AND item_addons.shop_id = addons_table.shop_id
+    LEFT JOIN (
+      SELECT items_to_item_substitution_groups.item_id, items_to_item_substitution_groups.shop_id, items_to_item_substitution_groups.index, item_substitution_groups.name, items_to_item_substitution_groups.substitution_group_id AS id,
+      COALESCE(json_agg(items ORDER BY item_substitution_groups_to_items.index) FILTER (WHERE items.id IS NOT NULL), '[]') AS substitutions
+      FROM items_to_item_substitution_groups
+      LEFT JOIN item_substitution_groups ON 
+        item_substitution_groups.id = items_to_item_substitution_groups.substitution_group_id
+        AND item_substitution_groups.shop_id = items_to_item_substitution_groups.shop_id
+      LEFT JOIN item_substitution_groups_to_items ON
+        items_to_item_substitution_groups.substitution_group_id = item_substitution_groups_to_items.substitution_group_id
+        AND items_to_item_substitution_groups.shop_id = item_substitution_groups_to_items.shop_id
+      LEFT JOIN items ON
+        item_substitution_groups_to_items.item_id = items.id
+        AND item_substitution_groups_to_items.shop_id = items.shop_id
+      GROUP BY items_to_item_substitution_groups.substitution_group_id, items_to_item_substitution_groups.item_id, items_to_item_substitution_groups.shop_id, items_to_item_substitution_groups.index, item_substitution_groups.name
+    ) AS substitution_groups ON items.id = substitution_groups.item_id AND items.shop_id = substitution_groups.shop_id
     WHERE items.shop_id = @shopId AND items.id = @itemId
     GROUP BY items.shop_id, items.id`,
 		pgx.NamedArgs{
@@ -136,6 +157,11 @@ func (s *PgxStore) UpdateItem(ctx context.Context, shopId *uuid.UUID, itemId *uu
 	}
 
 	err = s.setItemAddons(ctx, tx, shopId, itemId, data.AddonIds)
+	if err != nil {
+		return err
+	}
+
+	err = s.setItemSubstitutionGroups(ctx, tx, shopId, itemId, data.SubstitutionGroupIds)
 	if err != nil {
 		return err
 	}
@@ -285,7 +311,8 @@ func (s *PgxStore) setCategoryItems(ctx context.Context, tx pgx.Tx, shopId *uuid
 	}
 
 	_, err = tx.Exec(ctx, `
-    INSERT INTO items_to_categories SELECT * FROM _temp_upsert_items_to_categories ON CONFLICT DO NOTHING`)
+    INSERT INTO items_to_categories SELECT * FROM _temp_upsert_items_to_categories ON CONFLICT (shop_id, item_id, item_category_id) DO UPDATE
+    SET index = excluded.index`)
 	if err != nil {
 		return handlePgxError(err)
 	}
@@ -319,7 +346,8 @@ func (s *PgxStore) setItemAddons(ctx context.Context, tx pgx.Tx, shopId *uuid.UU
 	}
 
 	_, err = tx.Exec(ctx, `
-    INSERT INTO item_addons SELECT * FROM _temp_upsert_item_addons ON CONFLICT DO NOTHING`)
+    INSERT INTO item_addons SELECT * FROM _temp_upsert_item_addons ON CONFLICT (shop_id, item_id, addon_id) DO UPDATE
+    SET index = excluded.index`)
 	if err != nil {
 		return handlePgxError(err)
 	}
@@ -330,6 +358,42 @@ func (s *PgxStore) setItemAddons(ctx context.Context, tx pgx.Tx, shopId *uuid.UU
 			"shopId":       shopId,
 			"itemId":       itemId,
 			"addonItemIds": addonItemIds,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	return nil
+}
+
+func (s *PgxStore) setItemSubstitutionGroups(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, itemId *uuid.UUID, substitutionGroupIds []uuid.UUID) error {
+	_, err := tx.Exec(ctx, `
+    CREATE TEMPORARY TABLE _temp_upsert_items_to_item_substitution_groups (LIKE items_to_item_substitution_groups INCLUDING ALL ) ON COMMIT DROP`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_items_to_item_substitution_groups"},
+		[]string{"shop_id", "substitution_group_id", "item_id", "index"}, pgx.CopyFromSlice(len(substitutionGroupIds), func(i int) ([]any, error) {
+			return []any{shopId, substitutionGroupIds[i], itemId, i}, nil
+		}))
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx, `
+    INSERT INTO items_to_item_substitution_groups SELECT * FROM _temp_upsert_items_to_item_substitution_groups ON CONFLICT (shop_id, substitution_group_id, item_id) DO UPDATE
+    SET index = excluded.index`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx,
+		`DELETE FROM items_to_item_substitution_groups WHERE item_id = @itemId AND shop_id = @shopId AND NOT (substitution_group_id = ANY (@substitutionGroupIds))`,
+		pgx.NamedArgs{
+			"shopId":               shopId,
+			"itemId":               itemId,
+			"substitutionGroupIds": substitutionGroupIds,
 		})
 	if err != nil {
 		return handlePgxError(err)

@@ -9,8 +9,9 @@ type itemBase struct {
 
 type ItemUpdate struct {
 	itemBase
-	CategoryIds []uuid.UUID `json:"category_ids" db:"category_ids" validate:"required,dive,uuid4"`
-	AddonIds    []uuid.UUID `json:"addon_ids" db:"addon_ids" validate:"required,dive,uuid4"`
+	CategoryIds          []uuid.UUID `json:"category_ids" db:"category_ids" validate:"required,dive,uuid4"`
+	AddonIds             []uuid.UUID `json:"addon_ids" db:"addon_ids" validate:"required,dive,uuid4"`
+	SubstitutionGroupIds []uuid.UUID `json:"substitution_group_ids" db:"substitution_group_ids" validate:"required,dive,uuid4"`
 }
 
 type ItemCreate struct {
@@ -25,9 +26,10 @@ type ItemOverview struct {
 
 type Item struct {
 	ItemOverview
-	Categories []CategoryOverview `json:"categories" db:"categories" validate:"required,dive"`
-	Variants   []ItemVariant      `json:"variants" db:"variants" validate:"required,dive"`
-	Addons     []ItemOverview     `json:"addons" db:"addons" validate:"required,dive"`
+	Categories         []CategoryOverview  `json:"categories" db:"categories" validate:"required,dive"`
+	Variants           []ItemVariant       `json:"variants" db:"variants" validate:"required,dive"`
+	Addons             []ItemOverview      `json:"addons" db:"addons" validate:"required,dive"`
+	SubstitutionGroups []SubstitutionGroup `json:"substitution_groups" db:"substitution_groups" validate:"required,dive"`
 }
 
 func (item *Item) GetOverview() ItemOverview {

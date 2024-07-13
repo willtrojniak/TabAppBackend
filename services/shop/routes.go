@@ -53,6 +53,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 
 	// Item Substitution Groups
 	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/substitutions", shopIdParam), h.handleCreateSubstitutionGroup)
+	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/substitutions", shopIdParam), h.handleGetSubstitutionGroups)
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/substitutions/{%v}", shopIdParam, substitutionGroupIdParam), h.handleUpdateSubstitutionGroup)
 	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/substitutions/{%v}", shopIdParam, substitutionGroupIdParam), h.handleDeleteSubstitutionGroup)
 
@@ -573,6 +574,23 @@ func (h *Handler) handleUpdateSubstitutionGroup(w http.ResponseWriter, r *http.R
 		h.handleError(w, err)
 		return
 	}
+}
+
+func (h *Handler) handleGetSubstitutionGroups(w http.ResponseWriter, r *http.Request) {
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	substitutionGroups, err := h.GetSubstitutionGroups(r.Context(), &shopId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(substitutionGroups)
 }
 
 func (h *Handler) handleDeleteSubstitutionGroup(w http.ResponseWriter, r *http.Request) {

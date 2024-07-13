@@ -82,6 +82,33 @@ func (s *PgxStore) UpdateSubstitutionGroup(ctx context.Context, shopId *uuid.UUI
 	return nil
 }
 
+func (s *PgxStore) GetSubstitutionGroups(ctx context.Context, shopId *uuid.UUID) ([]types.SubstitutionGroup, error) {
+	rows, err := s.pool.Query(ctx, `
+    SELECT item_substitution_groups.name, item_substitution_groups.id,
+    COALESCE(json_agg(items ORDER BY item_substitution_groups_to_items.index) FILTER (WHERE items.id IS NOT NULL), '[]') AS substitutions
+    FROM item_substitution_groups
+    LEFT JOIN item_substitution_groups_to_items ON
+      item_substitution_groups.id = item_substitution_groups_to_items.substitution_group_id
+      AND item_substitution_groups.shop_id = item_substitution_groups_to_items.shop_id
+    LEFT JOIN items ON items.id = item_substitution_groups_to_items.item_id AND items.shop_id = item_substitution_groups_to_items.shop_id
+    WHERE item_substitution_groups.shop_id = @shopId
+    GROUP BY item_substitution_groups.shop_id, item_substitution_groups.id`,
+		pgx.NamedArgs{
+			"shopId": shopId,
+		})
+
+	if err != nil {
+		return nil, handlePgxError(err)
+	}
+
+	data, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.SubstitutionGroup])
+	if err != nil {
+		return nil, handlePgxError(err)
+	}
+
+	return data, nil
+}
+
 func (s *PgxStore) DeleteSubstitutionGroup(ctx context.Context, shopId *uuid.UUID, substitutionGroupId *uuid.UUID) error {
 	result, err := s.pool.Exec(ctx, `
     DELETE FROM item_substitution_groups 
@@ -118,7 +145,8 @@ func (s *PgxStore) setSubstitutionGroupSubstitutions(ctx context.Context, tx pgx
 	}
 
 	_, err = tx.Exec(ctx, `
-    INSERT INTO item_substitution_groups_to_items SELECT * FROM _temp_upsert_item_substitution_groups_to_items ON CONFLICT DO NOTHING`)
+    INSERT INTO item_substitution_groups_to_items SELECT * FROM _temp_upsert_item_substitution_groups_to_items ON CONFLICT (shop_id, substitution_group_id, item_id) DO UPDATE
+    SET index = excluded.index`)
 	if err != nil {
 		return handlePgxError(err)
 	}

@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS item_substitution_groups_to_items (
   index SMALLINT NOT NULL,
 
   PRIMARY KEY(shop_id, substitution_group_id, item_id),
-  FOREIGN KEY(shop_id, substitution_group_id) REFERENCES item_substitution_groups(shop_id, id),
-  FOREIGN KEY(shop_id, item_id) REFERENCES items(shop_id, id)
+  FOREIGN KEY(shop_id, substitution_group_id) REFERENCES item_substitution_groups(shop_id, id) ON DELETE CASCADE,
+  FOREIGN KEY(shop_id, item_id) REFERENCES items(shop_id, id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS items_to_item_substitution_groups (
@@ -26,6 +26,6 @@ CREATE TABLE IF NOT EXISTS items_to_item_substitution_groups (
   index SMALLINT NOT NULL,
 
   PRIMARY KEY(shop_id, substitution_group_id, item_id),
-  FOREIGN KEY(shop_id, substitution_group_id) REFERENCES item_substitution_groups(shop_id, id),
-  FOREIGN KEY(shop_id, item_id) REFERENCES items(shop_id, id)
+  FOREIGN KEY(shop_id, substitution_group_id) REFERENCES item_substitution_groups(shop_id, id) ON DELETE CASCADE,
+  FOREIGN KEY(shop_id, item_id) REFERENCES items(shop_id, id) ON DELETE CASCADE
 );
