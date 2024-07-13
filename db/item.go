@@ -71,8 +71,8 @@ func (s *PgxStore) GetItems(ctx context.Context, shopId *uuid.UUID) ([]types.Ite
 func (s *PgxStore) GetItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID) (types.Item, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT items.id, items.name, items.base_price,
-    array_remove(array_agg(item_categories.id), null) AS category_ids,
-    COALESCE(json_agg(item_variants) FILTER (WHERE item_variants.id IS NOT NULL), '[]') AS variants
+    COALESCE(json_agg(item_categories ORDER BY item_categories.name) FILTER (WHERE item_categories.id IS NOT NULL), '[]') AS categories, 
+    COALESCE(json_agg(item_variants ORDER BY item_variants.index) FILTER (WHERE item_variants.id IS NOT NULL), '[]') AS variants
     FROM items
     LEFT JOIN items_to_categories ON items.shop_id = items_to_categories.shop_id AND items.id = items_to_categories.item_id
     LEFT JOIN item_categories ON items_to_categories.shop_id = item_categories.shop_id AND items_to_categories.item_category_id = item_categories.id

@@ -24,8 +24,8 @@ type ItemOverview struct {
 
 type Item struct {
 	ItemOverview
-	CategoryIds  []uuid.UUID   `json:"category_ids" db:"category_ids" validate:"required,dive,uuid4"`
-	ItemVariants []ItemVariant `json:"variants" db:"variants" validate:"required,dive"`
+	Categories   []CategoryOverview `json:"categories" db:"categories" validate:"required,dive"`
+	ItemVariants []ItemVariant      `json:"variants" db:"variants" validate:"required,dive"`
 }
 
 func (item *Item) GetOverview() ItemOverview {
