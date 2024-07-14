@@ -57,6 +57,10 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/substitutions/{%v}", shopIdParam, substitutionGroupIdParam), h.handleUpdateSubstitutionGroup)
 	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/substitutions/{%v}", shopIdParam, substitutionGroupIdParam), h.handleDeleteSubstitutionGroup)
 
+	// Tabs
+	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs", shopIdParam), h.handleCreateTab)
+	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/tabs", shopIdParam), h.handleGetTabs)
+
 }
 
 func (h *Handler) handleCreateShop(w http.ResponseWriter, r *http.Request) {
@@ -617,5 +621,63 @@ func (h *Handler) handleDeleteSubstitutionGroup(w http.ResponseWriter, r *http.R
 		h.handleError(w, err)
 		return
 	}
+
+}
+
+func (h *Handler) handleCreateTab(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	userId, err := session.GetUserId()
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	data := types.TabCreate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	data.ShopId = shopId
+	data.OwnerId = userId
+
+	err = h.CreateTab(r.Context(), session, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleGetTabs(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	tabs, err := h.GetTabs(r.Context(), session, &shopId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tabs)
 
 }
