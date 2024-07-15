@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -27,6 +29,14 @@ func init() {
 		}
 		return name
 	})
+
+	Validate.RegisterStructValidation(TabUpdateStructLevelValidation, TabUpdate{})
+	Validate.RegisterValidation("future", dateFutureValidation)
+}
+
+func dateFutureValidation(f1 validator.FieldLevel) bool {
+	date := f1.Field().Interface().(Date)
+	return date.After(civil.DateOf(time.Now().AddDate(0, 0, -2)))
 }
 
 func ValidateData(data interface{}, logger *slog.Logger) error {

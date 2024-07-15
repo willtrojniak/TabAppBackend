@@ -4,14 +4,35 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgtype"
 	"strconv"
 	"strings"
 	"time"
+
+	"cloud.google.com/go/civil"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Time struct {
 	time.Duration
+}
+
+type Date struct {
+	civil.Date
+}
+
+func (d *Date) ScanDate(v pgtype.Date) error {
+	d.Date = civil.DateOf(v.Time)
+	return nil
+}
+
+func (d Date) DateValue() (pgtype.Date, error) {
+	date := pgtype.Date{}
+	loc, err := time.LoadLocation("")
+	if err != nil {
+		return date, err
+	}
+	date.Scan(d.In(loc))
+	return date, nil
 }
 
 func (t *Time) ScanTime(v pgtype.Time) error {
