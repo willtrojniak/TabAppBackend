@@ -9,20 +9,45 @@ import (
 	"github.com/google/uuid"
 )
 
+type TabStatus int
+
+const (
+	TAB_STATUS_PENDING TabStatus = iota
+	TAB_STATUS_CONFIRMED
+	TAB_STATUS_CLOSED
+)
+
+func (s TabStatus) String() string {
+	switch s {
+	case TAB_STATUS_PENDING:
+		return "pending"
+	case TAB_STATUS_CONFIRMED:
+		return "confirmed"
+	case TAB_STATUS_CLOSED:
+		return "closed"
+	default:
+		return "unknown"
+	}
+}
+
+type TabBase struct {
+	PaymentMethod       string  `json:"payment_method" db:"payment_method" validate:"required,oneof='in person' 'chartstring'"`
+	Organization        string  `json:"organization" db:"organization" validate:"required,min=3,max=64"`
+	DisplayName         string  `json:"display_name" db:"display_name" validate:"required,min=3,max=64"`
+	StartDate           Date    `json:"start_date" db:"start_date" validate:"required,future"`
+	EndDate             Date    `json:"end_date" db:"end_date" validate:"required"`
+	DailyStartTime      Time    `json:"daily_start_time" db:"daily_start_time" validate:"required"`
+	DailyEndTime        Time    `json:"daily_end_time" db:"daily_end_time" validate:"required"`
+	ActiveDaysOfWk      uint8   `json:"active_days_of_wk" db:"active_days_of_wk"`
+	DollarLimitPerOrder float32 `json:"dollar_limit_per_order" db:"dollar_limit_per_order" validate:"gte=0"`
+	VerificationMethod  string  `json:"verification_method" db:"verification_method" validate:"required,oneof='specify' 'voucher' 'email'"`
+	PaymentDetails      string  `json:"payment_details" db:"payment_details"`
+	BillingIntervalDays int     `json:"billing_interval_days" db:"billing_interval_days" validate:"gte=1,lte=365"`
+}
+
 type TabUpdate struct {
-	PaymentMethod       string   `json:"payment_method" db:"payment_method" validate:"required,oneof='in person' 'chartstring'"`
-	Organization        string   `json:"organization" db:"organization" validate:"required,min=3,max=64"`
-	DisplayName         string   `json:"display_name" db:"display_name" validate:"required,min=3,max=64"`
-	StartDate           Date     `json:"start_date" db:"start_date" validate:"required,future"`
-	EndDate             Date     `json:"end_date" db:"end_date" validate:"required"`
-	DailyStartTime      Time     `json:"daily_start_time" db:"daily_start_time" validate:"required"`
-	DailyEndTime        Time     `json:"daily_end_time" db:"daily_end_time" validate:"required"`
-	ActiveDaysOfWk      uint8    `json:"active_days_of_wk" db:"active_days_of_wk"`
-	DollarLimitPerOrder float32  `json:"dollar_limit_per_order" db:"dollar_limit_per_order" validate:"gte=0"`
-	VerificationMethod  string   `json:"verification_method" db:"verification_method" validate:"required,oneof='specify' 'voucher' 'email'"`
-	PaymentDetails      string   `json:"payment_details" db:"payment_details"`
-	BillingIntervalDays int      `json:"billing_interval_days" db:"billing_interval_days" validate:"gte=1,lte=365"`
-	VerificationList    []string `json:"verification_list" db:"verification_list" validate:"required,dive,required,email"`
+	TabBase
+	VerificationList []string `json:"verification_list" db:"verification_list" validate:"required,dive,required,email"`
 }
 
 type TabCreate struct {
@@ -33,8 +58,9 @@ type TabCreate struct {
 
 type Tab struct {
 	TabCreate
-	Id     uint   `json:"id" db:"id" validate:"required,gte=1"`
-	Status string `json:"status" db:"status"`
+	Id      uint     `json:"id" db:"id" validate:"required,gte=1"`
+	Updates *TabBase `json:"updates" db:"updates"`
+	Status  string   `json:"status" db:"status"`
 }
 
 func TabUpdateStructLevelValidation(sl validator.StructLevel) {

@@ -56,7 +56,7 @@ func (d *Time) UnmarshalJSON(b []byte) (err error) {
 	switch value := v.(type) {
 	case string:
 		segments := strings.Split(value, ":")
-		if len(segments) != 2 {
+		if len(segments) > 3 || len(segments) < 2 {
 			return errors.New("Invalid time (number of time segments)")
 		}
 		hours, err := strconv.Atoi(segments[0])

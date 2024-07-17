@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
@@ -16,6 +17,7 @@ const (
 	itemIdParam              = "itemId"
 	itemVariantIdParam       = "itemVariantId"
 	substitutionGroupIdParam = "substitutionGroupId"
+	tabIdParam               = "tabId"
 )
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
@@ -60,6 +62,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	// Tabs
 	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs", shopIdParam), h.handleCreateTab)
 	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/tabs", shopIdParam), h.handleGetTabs)
+	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.handleUpdateTab)
 
 }
 
@@ -679,5 +682,39 @@ func (h *Handler) handleGetTabs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tabs)
+
+}
+
+func (h *Handler) handleUpdateTab(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	tabId, err := strconv.Atoi(r.PathValue(tabIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid tab id"))
+		return
+	}
+
+	data := types.TabUpdate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.UpdateTab(r.Context(), session, &shopId, tabId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
 
 }
