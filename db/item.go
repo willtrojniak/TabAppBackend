@@ -5,45 +5,40 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
 func (s *PgxStore) CreateItem(ctx context.Context, data *types.ItemCreate) error {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return services.NewInternalServiceError(err)
-	}
-
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx,
-		`INSERT INTO items (id, shop_id, name, base_price) VALUES (@id, @shopId, @name, @basePrice)`,
+	row := tx.QueryRow(ctx,
+		`INSERT INTO items (shop_id, name, base_price) VALUES (@shopId, @name, @basePrice) RETURNING id`,
 		pgx.NamedArgs{
-			"id":        id,
 			"shopId":    data.ShopId,
 			"name":      data.Name,
 			"basePrice": data.BasePrice,
 		})
+	var itemId int
+	err = row.Scan(&itemId)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	err = s.setItemCategories(ctx, tx, &data.ShopId, &id, data.CategoryIds)
+	err = s.setItemCategories(ctx, tx, data.ShopId, itemId, data.CategoryIds)
 	if err != nil {
 		return err
 	}
 
-	err = s.setItemAddons(ctx, tx, &data.ShopId, &id, data.AddonIds)
+	err = s.setItemAddons(ctx, tx, data.ShopId, itemId, data.AddonIds)
 	if err != nil {
 		return err
 	}
 
-	err = s.setItemSubstitutionGroups(ctx, tx, &data.ShopId, &id, data.SubstitutionGroupIds)
+	err = s.setItemSubstitutionGroups(ctx, tx, data.ShopId, itemId, data.SubstitutionGroupIds)
 	if err != nil {
 		return err
 	}
@@ -56,7 +51,7 @@ func (s *PgxStore) CreateItem(ctx context.Context, data *types.ItemCreate) error
 	return nil
 }
 
-func (s *PgxStore) GetItems(ctx context.Context, shopId *uuid.UUID) ([]types.ItemOverview, error) {
+func (s *PgxStore) GetItems(ctx context.Context, shopId int) ([]types.ItemOverview, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT items.base_price, items.name, items.id
     FROM items
@@ -78,7 +73,7 @@ func (s *PgxStore) GetItems(ctx context.Context, shopId *uuid.UUID) ([]types.Ite
 
 }
 
-func (s *PgxStore) GetItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID) (types.Item, error) {
+func (s *PgxStore) GetItem(ctx context.Context, shopId int, itemId int) (types.Item, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT items.id, items.name, items.base_price,
     COALESCE(json_agg(item_categories ORDER BY item_categories.name) FILTER (WHERE item_categories.id IS NOT NULL), '[]') AS categories, 
@@ -126,7 +121,7 @@ func (s *PgxStore) GetItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.
 
 }
 
-func (s *PgxStore) UpdateItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID, data *types.ItemUpdate) error {
+func (s *PgxStore) UpdateItem(ctx context.Context, shopId int, itemId int, data *types.ItemUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -174,7 +169,7 @@ func (s *PgxStore) UpdateItem(ctx context.Context, shopId *uuid.UUID, itemId *uu
 	return nil
 }
 
-func (s *PgxStore) DeleteItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID) error {
+func (s *PgxStore) DeleteItem(ctx context.Context, shopId int, itemId int) error {
 	result, err := s.pool.Exec(ctx, `
     DELETE FROM items 
     WHERE shop_id = @shopId AND id = @itemId`,
@@ -194,17 +189,11 @@ func (s *PgxStore) DeleteItem(ctx context.Context, shopId *uuid.UUID, itemId *uu
 }
 
 func (s *PgxStore) CreateItemVariant(ctx context.Context, data *types.ItemVariantCreate) error {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return services.NewInternalServiceError(err)
-	}
-
-	_, err = s.pool.Exec(ctx, `
+	_, err := s.pool.Exec(ctx, `
     INSERT INTO item_variants (shop_id, item_id, id, name, price, index) VALUES (@shopId, @itemId, @id, @name, @price, @index)`,
 		pgx.NamedArgs{
 			"shopId": data.ShopId,
 			"itemId": data.ItemId,
-			"id":     id,
 			"name":   data.Name,
 			"price":  data.Price,
 			"index":  data.Index,
@@ -217,7 +206,7 @@ func (s *PgxStore) CreateItemVariant(ctx context.Context, data *types.ItemVarian
 	return nil
 }
 
-func (s *PgxStore) UpdateItemVariant(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID, variantId *uuid.UUID, data *types.ItemVariantUpdate) error {
+func (s *PgxStore) UpdateItemVariant(ctx context.Context, shopId int, itemId int, variantId int, data *types.ItemVariantUpdate) error {
 	result, err := s.pool.Exec(ctx, `
     UPDATE item_variants SET (name, price, index) = (@name, @price, @index)
     WHERE id = @id AND item_id = @itemId AND shop_id = @shopId`,
@@ -241,7 +230,7 @@ func (s *PgxStore) UpdateItemVariant(ctx context.Context, shopId *uuid.UUID, ite
 	return nil
 }
 
-func (s *PgxStore) DeleteItemVariant(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID, variantId *uuid.UUID) error {
+func (s *PgxStore) DeleteItemVariant(ctx context.Context, shopId int, itemId int, variantId int) error {
 	result, err := s.pool.Exec(ctx, `
     DELETE FROM item_variants 
     WHERE id = @id AND item_id = @itemId AND shop_id = @shopId`,
@@ -262,7 +251,7 @@ func (s *PgxStore) DeleteItemVariant(ctx context.Context, shopId *uuid.UUID, ite
 	return nil
 }
 
-func (s *PgxStore) setItemCategories(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, itemId *uuid.UUID, categoryIds []uuid.UUID) error {
+func (s *PgxStore) setItemCategories(ctx context.Context, tx pgx.Tx, shopId int, itemId int, categoryIds []int) error {
 	_, err := tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_items_to_categories (LIKE items_to_categories INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {
@@ -296,7 +285,7 @@ func (s *PgxStore) setItemCategories(ctx context.Context, tx pgx.Tx, shopId *uui
 	return nil
 }
 
-func (s *PgxStore) setCategoryItems(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, categoryId *uuid.UUID, itemIds []uuid.UUID) error {
+func (s *PgxStore) setCategoryItems(ctx context.Context, tx pgx.Tx, shopId int, categoryId int, itemIds []int) error {
 	_, err := tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_items_to_categories (LIKE items_to_categories INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {
@@ -331,7 +320,7 @@ func (s *PgxStore) setCategoryItems(ctx context.Context, tx pgx.Tx, shopId *uuid
 	return nil
 }
 
-func (s *PgxStore) setItemAddons(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, itemId *uuid.UUID, addonItemIds []uuid.UUID) error {
+func (s *PgxStore) setItemAddons(ctx context.Context, tx pgx.Tx, shopId int, itemId int, addonItemIds []int) error {
 	_, err := tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_item_addons (LIKE item_addons INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {
@@ -366,7 +355,7 @@ func (s *PgxStore) setItemAddons(ctx context.Context, tx pgx.Tx, shopId *uuid.UU
 	return nil
 }
 
-func (s *PgxStore) setItemSubstitutionGroups(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, itemId *uuid.UUID, substitutionGroupIds []uuid.UUID) error {
+func (s *PgxStore) setItemSubstitutionGroups(ctx context.Context, tx pgx.Tx, shopId int, itemId int, substitutionGroupIds []int) error {
 	_, err := tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_items_to_item_substitution_groups (LIKE items_to_item_substitution_groups INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {

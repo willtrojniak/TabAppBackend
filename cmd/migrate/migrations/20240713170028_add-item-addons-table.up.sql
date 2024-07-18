@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS item_addons (
-  shop_id UUID NOT NULL,
-  item_id UUID NOT NULL,
-  addon_id UUID NOT NULL,
+  shop_id INT NOT NULL,
+  item_id INT NOT NULL,
+  addon_id INT NOT NULL,
   index SMALLINT NOT NULL,
 
   PRIMARY KEY(shop_id, item_id, addon_id),

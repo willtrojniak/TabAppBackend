@@ -6,11 +6,10 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 )
 
 func (h *Handler) CreateItem(ctx context.Context, session *sessions.Session, data *types.ItemCreate) error {
-	err := h.AuthorizeModifyShop(ctx, session, &data.ShopId)
+	err := h.AuthorizeModifyShop(ctx, session, data.ShopId)
 	if err != nil {
 		return err
 	}
@@ -30,7 +29,7 @@ func (h *Handler) CreateItem(ctx context.Context, session *sessions.Session, dat
 	return nil
 }
 
-func (h *Handler) GetItems(ctx context.Context, shopId *uuid.UUID) ([]types.ItemOverview, error) {
+func (h *Handler) GetItems(ctx context.Context, shopId int) ([]types.ItemOverview, error) {
 	items, err := h.store.GetItems(ctx, shopId)
 	if err != nil {
 		return nil, err
@@ -39,7 +38,7 @@ func (h *Handler) GetItems(ctx context.Context, shopId *uuid.UUID) ([]types.Item
 	return items, nil
 }
 
-func (h *Handler) UpdateItem(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, itemId *uuid.UUID, data *types.ItemUpdate) error {
+func (h *Handler) UpdateItem(ctx context.Context, session *sessions.Session, shopId int, itemId int, data *types.ItemUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
@@ -61,7 +60,7 @@ func (h *Handler) UpdateItem(ctx context.Context, session *sessions.Session, sho
 
 }
 
-func (h *Handler) GetItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.UUID) (types.Item, error) {
+func (h *Handler) GetItem(ctx context.Context, shopId int, itemId int) (types.Item, error) {
 	item, err := h.store.GetItem(ctx, shopId, itemId)
 	if err != nil {
 		return types.Item{}, err
@@ -70,7 +69,7 @@ func (h *Handler) GetItem(ctx context.Context, shopId *uuid.UUID, itemId *uuid.U
 	return item, nil
 }
 
-func (h *Handler) DeleteItem(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, itemId *uuid.UUID) error {
+func (h *Handler) DeleteItem(ctx context.Context, session *sessions.Session, shopId int, itemId int) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
@@ -86,7 +85,7 @@ func (h *Handler) DeleteItem(ctx context.Context, session *sessions.Session, sho
 }
 
 func (h *Handler) CreateItemVariant(ctx context.Context, session *sessions.Session, data *types.ItemVariantCreate) error {
-	err := h.AuthorizeModifyShop(ctx, session, &data.ShopId)
+	err := h.AuthorizeModifyShop(ctx, session, data.ShopId)
 	if err != nil {
 		return err
 	}
@@ -104,7 +103,7 @@ func (h *Handler) CreateItemVariant(ctx context.Context, session *sessions.Sessi
 	return nil
 }
 
-func (h *Handler) UpdateItemVariant(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, itemId *uuid.UUID, variantId *uuid.UUID, data *types.ItemVariantUpdate) error {
+func (h *Handler) UpdateItemVariant(ctx context.Context, session *sessions.Session, shopId int, itemId int, variantId int, data *types.ItemVariantUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
@@ -123,7 +122,7 @@ func (h *Handler) UpdateItemVariant(ctx context.Context, session *sessions.Sessi
 	return nil
 }
 
-func (h *Handler) DeleteItemVariant(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, itemId *uuid.UUID, variantId *uuid.UUID) error {
+func (h *Handler) DeleteItemVariant(ctx context.Context, session *sessions.Session, shopId int, itemId int, variantId int) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err

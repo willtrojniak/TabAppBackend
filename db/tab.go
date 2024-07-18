@@ -5,7 +5,6 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -49,7 +48,7 @@ func (s *PgxStore) CreateTab(ctx context.Context, data *types.TabCreate) error {
 		return handlePgxError(err)
 	}
 
-	err = s.setTabUsers(ctx, tx, &data.ShopId, tabId, data.VerificationList)
+	err = s.setTabUsers(ctx, tx, data.ShopId, tabId, data.VerificationList)
 	if err != nil {
 		return err
 	}
@@ -62,7 +61,7 @@ func (s *PgxStore) CreateTab(ctx context.Context, data *types.TabCreate) error {
 	return nil
 }
 
-func (s *PgxStore) UpdateTab(ctx context.Context, shopId *uuid.UUID, tabId int, data *types.TabUpdate) error {
+func (s *PgxStore) UpdateTab(ctx context.Context, shopId int, tabId int, data *types.TabUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -112,7 +111,7 @@ func (s *PgxStore) UpdateTab(ctx context.Context, shopId *uuid.UUID, tabId int, 
 
 }
 
-func (s *PgxStore) ApproveTab(ctx context.Context, shopId *uuid.UUID, tabId int) error {
+func (s *PgxStore) ApproveTab(ctx context.Context, shopId int, tabId int) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -168,7 +167,7 @@ func (s *PgxStore) ApproveTab(ctx context.Context, shopId *uuid.UUID, tabId int)
 
 }
 
-func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId *uuid.UUID, tabId int, data *types.TabUpdate) error {
+func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId int, tabId int, data *types.TabUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -224,7 +223,7 @@ func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId *uuid.UUID, tabId i
 
 }
 
-func (s *PgxStore) GetTabs(ctx context.Context, shopId *uuid.UUID) ([]types.Tab, error) {
+func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.Tab, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT tabs.*, to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates, array_remove(array_agg(tab_users.email), null) as verification_list
     FROM tabs
@@ -247,7 +246,7 @@ func (s *PgxStore) GetTabs(ctx context.Context, shopId *uuid.UUID) ([]types.Tab,
 	return tabs, nil
 }
 
-func (s *PgxStore) GetTab(ctx context.Context, shopId *uuid.UUID, tabId int) (types.Tab, error) {
+func (s *PgxStore) GetTab(ctx context.Context, shopId int, tabId int) (types.Tab, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT tabs.*, to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates, array_remove(array_agg(tab_users.email), null) as verification_list
     FROM tabs
@@ -271,7 +270,7 @@ func (s *PgxStore) GetTab(ctx context.Context, shopId *uuid.UUID, tabId int) (ty
 	return tab, nil
 }
 
-func (s *PgxStore) SetTabUsers(ctx context.Context, shopId *uuid.UUID, tabId int, emails []string) error {
+func (s *PgxStore) SetTabUsers(ctx context.Context, shopId int, tabId int, emails []string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -291,7 +290,7 @@ func (s *PgxStore) SetTabUsers(ctx context.Context, shopId *uuid.UUID, tabId int
 	return nil
 }
 
-func (s *PgxStore) setTabUsers(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, tabId int, emails []string) error {
+func (s *PgxStore) setTabUsers(ctx context.Context, tx pgx.Tx, shopId int, tabId int, emails []string) error {
 	_, err := tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_tab_users (LIKE tab_users INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {

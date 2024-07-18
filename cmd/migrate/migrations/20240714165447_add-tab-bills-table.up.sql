@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS tab_bills (
-  shop_id UUID NOT NULL,
+  shop_id INT NOT NULL,
   tab_id INT NOT NULL,
   id SERIAL NOT NULL,
   start_time TIMESTAMPTZ NOT NULL,

@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS tab_updates (
-  shop_id UUID NOT NULL,
+  shop_id INT NOT NULL,
   tab_id INT NOT NULL,
   payment_method payment_method NOT NULL,
   organization VARCHAR(255) NOT NULL,

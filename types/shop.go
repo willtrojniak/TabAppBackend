@@ -1,7 +1,5 @@
 package types
 
-import "github.com/google/uuid"
-
 type PaymentMethod string
 
 const (
@@ -20,6 +18,6 @@ type ShopCreate struct {
 }
 
 type Shop struct {
-	Id uuid.UUID `json:"id" db:"id" validate:"required,uuid4"`
+	Id uint `json:"id" db:"id" validate:"required,gte=1"`
 	ShopCreate
 }

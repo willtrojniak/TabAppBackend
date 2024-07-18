@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS item_substitution_groups (
-  shop_id UUID NOT NULL,
-  id UUID NOT NULL,
+  shop_id INT NOT NULL,
+  id SERIAL NOT NULL,
   name VARCHAR(255) NOT NULL,
 
   PRIMARY KEY(shop_id, id),
@@ -9,9 +9,9 @@ CREATE TABLE IF NOT EXISTS item_substitution_groups (
 );
 
 CREATE TABLE IF NOT EXISTS item_substitution_groups_to_items (
-  shop_id UUID NOT NULL,
-  substitution_group_id UUID NOT NULL,
-  item_id UUID NOT NULL,
+  shop_id INT NOT NULL,
+  substitution_group_id INT NOT NULL,
+  item_id INT NOT NULL,
   index SMALLINT NOT NULL,
 
   PRIMARY KEY(shop_id, substitution_group_id, item_id),
@@ -20,9 +20,9 @@ CREATE TABLE IF NOT EXISTS item_substitution_groups_to_items (
 );
 
 CREATE TABLE IF NOT EXISTS items_to_item_substitution_groups (
-  shop_id UUID NOT NULL,
-  substitution_group_id UUID NOT NULL,
-  item_id UUID NOT NULL,
+  shop_id INT NOT NULL,
+  substitution_group_id INT NOT NULL,
+  item_id INT NOT NULL,
   index SMALLINT NOT NULL,
 
   PRIMARY KEY(shop_id, substitution_group_id, item_id),

@@ -9,7 +9,6 @@ import (
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -64,7 +63,7 @@ func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]types.
 
 }
 
-func (h *Handler) GetShopById(ctx context.Context, shopId *uuid.UUID) (types.Shop, error) {
+func (h *Handler) GetShopById(ctx context.Context, shopId int) (types.Shop, error) {
 	shop, err := h.store.GetShopById(ctx, shopId)
 	if err != nil {
 		return types.Shop{}, err
@@ -72,7 +71,7 @@ func (h *Handler) GetShopById(ctx context.Context, shopId *uuid.UUID) (types.Sho
 	return shop, err
 }
 
-func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, data *types.ShopUpdate) error {
+func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, shopId int, data *types.ShopUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
@@ -94,7 +93,7 @@ func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, sho
 	return nil
 }
 
-func (h *Handler) DeleteShop(ctx context.Context, session *sessions.Session, shopId *uuid.UUID) error {
+func (h *Handler) DeleteShop(ctx context.Context, session *sessions.Session, shopId int) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
@@ -108,7 +107,7 @@ func (h *Handler) DeleteShop(ctx context.Context, session *sessions.Session, sho
 	return nil
 }
 
-func (h *Handler) AuthorizeModifyShop(ctx context.Context, session *sessions.Session, targetShopId *uuid.UUID) error {
+func (h *Handler) AuthorizeModifyShop(ctx context.Context, session *sessions.Session, targetShopId int) error {
 	userId, err := session.GetUserId()
 	if err != nil {
 		return err

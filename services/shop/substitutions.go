@@ -5,11 +5,10 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 )
 
 func (h *Handler) CreateSubstitutionGroup(ctx context.Context, session *sessions.Session, data *types.SubstitutionGroupCreate) error {
-	err := h.AuthorizeModifyShop(ctx, session, &data.ShopId)
+	err := h.AuthorizeModifyShop(ctx, session, data.ShopId)
 	if err != nil {
 		return err
 	}
@@ -27,7 +26,7 @@ func (h *Handler) CreateSubstitutionGroup(ctx context.Context, session *sessions
 	return nil
 }
 
-func (h *Handler) UpdateSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, substitutionGroupId *uuid.UUID, data *types.SubstitutionGroupUpdate) error {
+func (h *Handler) UpdateSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId int, substitutionGroupId int, data *types.SubstitutionGroupUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
@@ -46,7 +45,7 @@ func (h *Handler) UpdateSubstitutionGroup(ctx context.Context, session *sessions
 	return nil
 }
 
-func (h *Handler) GetSubstitutionGroups(ctx context.Context, shopId *uuid.UUID) ([]types.SubstitutionGroup, error) {
+func (h *Handler) GetSubstitutionGroups(ctx context.Context, shopId int) ([]types.SubstitutionGroup, error) {
 	groups, err := h.store.GetSubstitutionGroups(ctx, shopId)
 	if err != nil {
 		return nil, err
@@ -56,7 +55,7 @@ func (h *Handler) GetSubstitutionGroups(ctx context.Context, shopId *uuid.UUID) 
 
 }
 
-func (h *Handler) DeleteSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, substitutionGroupId *uuid.UUID) error {
+func (h *Handler) DeleteSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId int, substitutionGroupId int) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err

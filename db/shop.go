@@ -3,31 +3,30 @@ package db
 import (
 	"context"
 
-	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
 func (s *PgxStore) CreateShop(ctx context.Context, data *types.ShopCreate) error {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return services.NewInternalServiceError(err)
-	}
-
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx,
-		`INSERT INTO shops (id, owner_id, name) VALUES ($1, $2, $3)`, id, data.OwnerId, data.Name)
+	row := tx.QueryRow(ctx,
+		`INSERT INTO shops (owner_id, name) VALUES (@ownerId, @name) RETURNING id`,
+		pgx.NamedArgs{
+			"ownerId": data.OwnerId,
+			"name":    data.Name,
+		})
+	var shopId int
+	err = row.Scan(&shopId)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	err = s.setShopPaymentMethods(ctx, tx, &id, data.PaymentMethods)
+	err = s.setShopPaymentMethods(ctx, tx, shopId, data.PaymentMethods)
 	if err != nil {
 		return handlePgxError(err)
 	}
@@ -63,7 +62,7 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 
 }
 
-func (s *PgxStore) GetShopById(ctx context.Context, shopId *uuid.UUID) (types.Shop, error) {
+func (s *PgxStore) GetShopById(ctx context.Context, shopId int) (types.Shop, error) {
 	row, err := s.pool.Query(ctx,
 		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
@@ -85,7 +84,7 @@ func (s *PgxStore) GetShopById(ctx context.Context, shopId *uuid.UUID) (types.Sh
 
 }
 
-func (s *PgxStore) UpdateShop(ctx context.Context, shopId *uuid.UUID, data *types.ShopUpdate) error {
+func (s *PgxStore) UpdateShop(ctx context.Context, shopId int, data *types.ShopUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -115,7 +114,7 @@ func (s *PgxStore) UpdateShop(ctx context.Context, shopId *uuid.UUID, data *type
 	return nil
 }
 
-func (s *PgxStore) DeleteShop(ctx context.Context, shopId *uuid.UUID) error {
+func (s *PgxStore) DeleteShop(ctx context.Context, shopId int) error {
 	_, err := s.pool.Exec(ctx,
 		`DELETE FROM shops WHERE shops.id = @shopId`,
 		pgx.NamedArgs{
@@ -127,7 +126,7 @@ func (s *PgxStore) DeleteShop(ctx context.Context, shopId *uuid.UUID) error {
 	return nil
 }
 
-func (s *PgxStore) setShopPaymentMethods(ctx context.Context, tx pgx.Tx, shopId *uuid.UUID, methods []string) error {
+func (s *PgxStore) setShopPaymentMethods(ctx context.Context, tx pgx.Tx, shopId int, methods []string) error {
 	_, err := tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_payment_methods (LIKE payment_methods INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {

@@ -5,11 +5,10 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 )
 
 func (h *Handler) CreateCategory(ctx context.Context, session *sessions.Session, data *types.CategoryCreate) error {
-	err := h.AuthorizeModifyShop(ctx, session, &data.ShopId)
+	err := h.AuthorizeModifyShop(ctx, session, data.ShopId)
 	if err != nil {
 		return err
 	}
@@ -27,7 +26,7 @@ func (h *Handler) CreateCategory(ctx context.Context, session *sessions.Session,
 	return nil
 }
 
-func (h *Handler) GetCategories(ctx context.Context, shopId *uuid.UUID) ([]types.Category, error) {
+func (h *Handler) GetCategories(ctx context.Context, shopId int) ([]types.Category, error) {
 
 	categories, err := h.store.GetCategories(ctx, shopId)
 	if err != nil {
@@ -38,7 +37,7 @@ func (h *Handler) GetCategories(ctx context.Context, shopId *uuid.UUID) ([]types
 
 }
 
-func (h *Handler) UpdateCategory(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, categoryId *uuid.UUID, data *types.CategoryUpdate) error {
+func (h *Handler) UpdateCategory(ctx context.Context, session *sessions.Session, shopId int, categoryId int, data *types.CategoryUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
@@ -59,7 +58,7 @@ func (h *Handler) UpdateCategory(ctx context.Context, session *sessions.Session,
 	return nil
 }
 
-func (h *Handler) DeleteCategory(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, categoryId *uuid.UUID) error {
+func (h *Handler) DeleteCategory(ctx context.Context, session *sessions.Session, shopId int, categoryId int) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err

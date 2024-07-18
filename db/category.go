@@ -5,35 +5,30 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
 func (s *PgxStore) CreateCategory(ctx context.Context, data *types.CategoryCreate) error {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return services.NewInternalServiceError(err)
-	}
-
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx,
-		`INSERT INTO item_categories (id, shop_id, name, index) VALUES (@id, @shopId, @name, @index)`,
+	row := tx.QueryRow(ctx,
+		`INSERT INTO item_categories (shop_id, name, index) VALUES  (@shopId, @name, @index) RETURNING id`,
 		pgx.NamedArgs{
-			"id":     id,
 			"shopId": data.ShopId,
 			"name":   data.Name,
 			"index":  data.Index,
 		})
+	var categoryId int
+	err = row.Scan(&categoryId)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	err = s.setCategoryItems(ctx, tx, &data.ShopId, &id, data.ItemIds)
+	err = s.setCategoryItems(ctx, tx, data.ShopId, categoryId, data.ItemIds)
 	if err != nil {
 		return err
 	}
@@ -46,7 +41,7 @@ func (s *PgxStore) CreateCategory(ctx context.Context, data *types.CategoryCreat
 	return nil
 }
 
-func (s *PgxStore) GetCategories(ctx context.Context, shopId *uuid.UUID) ([]types.Category, error) {
+func (s *PgxStore) GetCategories(ctx context.Context, shopId int) ([]types.Category, error) {
 
 	rows, err := s.pool.Query(ctx,
 		`SELECT item_categories.*, array_remove(array_agg(items.id), null) AS item_ids FROM item_categories
@@ -70,7 +65,7 @@ func (s *PgxStore) GetCategories(ctx context.Context, shopId *uuid.UUID) ([]type
 	return categories, nil
 }
 
-func (s *PgxStore) UpdateCategory(ctx context.Context, shopId *uuid.UUID, categoryId *uuid.UUID, data *types.CategoryUpdate) error {
+func (s *PgxStore) UpdateCategory(ctx context.Context, shopId int, categoryId int, data *types.CategoryUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -106,7 +101,7 @@ func (s *PgxStore) UpdateCategory(ctx context.Context, shopId *uuid.UUID, catego
 	return nil
 }
 
-func (s *PgxStore) DeleteCategory(ctx context.Context, shopId *uuid.UUID, categoryId *uuid.UUID) error {
+func (s *PgxStore) DeleteCategory(ctx context.Context, shopId int, categoryId int) error {
 
 	result, err := s.pool.Exec(ctx, `
     DELETE FROM item_categories WHERE shop_id = @shopId AND id = @categoryId`,

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS items_to_categories(
-  shop_id UUID NOT NULL,
-  item_id UUID NOT NULL,
-  item_category_id UUID NOT NULL,
+  shop_id INT NOT NULL,
+  item_id INT NOT NULL,
+  item_category_id INT NOT NULL,
   index SMALLINT NOT NULL,
 
   PRIMARY KEY(shop_id, item_id, item_category_id),

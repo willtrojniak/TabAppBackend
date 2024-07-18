@@ -8,7 +8,6 @@ import (
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 )
 
 func (h *Handler) CreateTab(ctx context.Context, session *sessions.Session, data *types.TabCreate) error {
@@ -26,7 +25,7 @@ func (h *Handler) CreateTab(ctx context.Context, session *sessions.Session, data
 	return nil
 }
 
-func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, tabId int, data *types.TabUpdate) error {
+func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shopId int, tabId int, data *types.TabUpdate) error {
 	userId, err := session.GetUserId()
 	if err != nil {
 		return err
@@ -69,7 +68,7 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shop
 			return err
 		}
 	} else if tab.Status == types.TAB_STATUS_CLOSED.String() {
-		return services.NewUnauthorizedServiceError(errors.New("Cannot update closed tab"))
+		return services.NewDataConflictServiceError(errors.New("Cannot update closed tab"))
 	} else {
 		h.logger.Error("Unknown tab state in update tab", "userId", userId, "tab", tab)
 		return services.NewInternalServiceError(errors.New("Unknown tab state"))
@@ -78,7 +77,7 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shop
 	return nil
 }
 
-func (h *Handler) ApproveTab(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, tabId int) error {
+func (h *Handler) ApproveTab(ctx context.Context, session *sessions.Session, shopId int, tabId int) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
@@ -100,7 +99,7 @@ func (h *Handler) ApproveTab(ctx context.Context, session *sessions.Session, sho
 	return nil
 }
 
-func (h *Handler) GetTabs(ctx context.Context, session *sessions.Session, shopId *uuid.UUID) ([]types.Tab, error) {
+func (h *Handler) GetTabs(ctx context.Context, session *sessions.Session, shopId int) ([]types.Tab, error) {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return nil, err

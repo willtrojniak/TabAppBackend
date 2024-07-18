@@ -6,7 +6,6 @@ import (
 	"regexp"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 )
 
 type TabStatus int
@@ -38,7 +37,7 @@ type TabBase struct {
 	EndDate             Date    `json:"end_date" db:"end_date" validate:"required"`
 	DailyStartTime      Time    `json:"daily_start_time" db:"daily_start_time" validate:"required"`
 	DailyEndTime        Time    `json:"daily_end_time" db:"daily_end_time" validate:"required"`
-	ActiveDaysOfWk      uint8   `json:"active_days_of_wk" db:"active_days_of_wk"`
+	ActiveDaysOfWk      int8    `json:"active_days_of_wk" db:"active_days_of_wk"`
 	DollarLimitPerOrder float32 `json:"dollar_limit_per_order" db:"dollar_limit_per_order" validate:"gte=0"`
 	VerificationMethod  string  `json:"verification_method" db:"verification_method" validate:"required,oneof='specify' 'voucher' 'email'"`
 	PaymentDetails      string  `json:"payment_details" db:"payment_details"`
@@ -52,13 +51,13 @@ type TabUpdate struct {
 
 type TabCreate struct {
 	TabUpdate
-	ShopId  uuid.UUID `json:"shop_id" db:"shop_id" validate:"required,uuid4"`
-	OwnerId string    `json:"owner_id" db:"owner_id" validate:"required"`
+	ShopId  int    `json:"shop_id" db:"shop_id" validate:"required,gte=1"`
+	OwnerId string `json:"owner_id" db:"owner_id" validate:"required"`
 }
 
 type Tab struct {
 	TabCreate
-	Id             uint     `json:"id" db:"id" validate:"required,gte=1"`
+	Id             int      `json:"id" db:"id" validate:"required,gte=1"`
 	PendingUpdates *TabBase `json:"pending_updates" db:"pending_updates"`
 	Status         string   `json:"status" db:"status"`
 }

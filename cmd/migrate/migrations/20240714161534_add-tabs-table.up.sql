@@ -2,7 +2,7 @@ CREATE TYPE tab_verification_method AS ENUM ('specify', 'voucher', 'email');
 CREATE TYPE tab_status AS ENUM ('pending', 'confirmed', 'closed');
 
 CREATE TABLE IF NOT EXISTS tabs (
-  shop_id UUID NOT NULL,
+  shop_id INT NOT NULL,
   owner_id VARCHAR(255) NOT NULL,
   id SERIAL NOT NULL,
   payment_method payment_method NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS tabs (
 );
 
 CREATE TABLE IF NOT EXISTS tab_users (
-  shop_id UUID NOT NULL,
+  shop_id INT NOT NULL,
   tab_id INT NOT NULL,
   email VARCHAR(255) NOT NULL,
 

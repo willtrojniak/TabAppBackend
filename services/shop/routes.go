@@ -8,7 +8,6 @@ import (
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
-	"github.com/google/uuid"
 )
 
 const (
@@ -112,13 +111,13 @@ func (h *Handler) handleGetShops(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetShopById(w http.ResponseWriter, r *http.Request) {
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
 		return
 	}
 
-	shop, err := h.GetShopById(r.Context(), &shopId)
+	shop, err := h.GetShopById(r.Context(), shopId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -130,7 +129,7 @@ func (h *Handler) handleGetShopById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleUpdateShop(w http.ResponseWriter, r *http.Request) {
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
 		return
@@ -149,7 +148,7 @@ func (h *Handler) handleUpdateShop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.UpdateShop(r.Context(), session, &shopId, &data)
+	err = h.UpdateShop(r.Context(), session, shopId, &data)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -157,7 +156,7 @@ func (h *Handler) handleUpdateShop(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleDeleteShop(w http.ResponseWriter, r *http.Request) {
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
 		return
@@ -169,7 +168,7 @@ func (h *Handler) handleDeleteShop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.DeleteShop(r.Context(), session, &shopId)
+	err = h.DeleteShop(r.Context(), session, shopId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -191,7 +190,7 @@ func (h *Handler) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
@@ -213,13 +212,13 @@ func (h *Handler) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetCategories(w http.ResponseWriter, r *http.Request) {
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	categories, err := h.GetCategories(r.Context(), &shopId)
+	categories, err := h.GetCategories(r.Context(), shopId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -236,13 +235,13 @@ func (h *Handler) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	categoryId, err := uuid.Parse(r.PathValue(categoryIdParam))
+	categoryId, err := strconv.Atoi(r.PathValue(categoryIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
@@ -255,7 +254,7 @@ func (h *Handler) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.UpdateCategory(r.Context(), session, &shopId, &categoryId, &data)
+	err = h.UpdateCategory(r.Context(), session, shopId, categoryId, &data)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -269,19 +268,19 @@ func (h *Handler) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	categoryId, err := uuid.Parse(r.PathValue(categoryIdParam))
+	categoryId, err := strconv.Atoi(r.PathValue(categoryIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	err = h.DeleteCategory(r.Context(), session, &shopId, &categoryId)
+	err = h.DeleteCategory(r.Context(), session, shopId, categoryId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -296,7 +295,7 @@ func (h *Handler) handleCreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
@@ -318,13 +317,13 @@ func (h *Handler) handleCreateItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetItems(w http.ResponseWriter, r *http.Request) {
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	items, err := h.GetItems(r.Context(), &shopId)
+	items, err := h.GetItems(r.Context(), shopId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -341,13 +340,13 @@ func (h *Handler) handleUpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	itemId, err := strconv.Atoi(r.PathValue(itemIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
 		return
@@ -360,7 +359,7 @@ func (h *Handler) handleUpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.UpdateItem(r.Context(), session, &shopId, &itemId, &data)
+	err = h.UpdateItem(r.Context(), session, shopId, itemId, &data)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -369,19 +368,19 @@ func (h *Handler) handleUpdateItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetItem(w http.ResponseWriter, r *http.Request) {
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	itemId, err := strconv.Atoi(r.PathValue(itemIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
 		return
 	}
 
-	item, err := h.GetItem(r.Context(), &shopId, &itemId)
+	item, err := h.GetItem(r.Context(), shopId, itemId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -397,19 +396,19 @@ func (h *Handler) handleDeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	itemId, err := strconv.Atoi(r.PathValue(itemIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
 		return
 	}
 
-	err = h.DeleteItem(r.Context(), session, &shopId, &itemId)
+	err = h.DeleteItem(r.Context(), session, shopId, itemId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -424,13 +423,13 @@ func (h *Handler) handleCreateItemVariant(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	itemId, err := strconv.Atoi(r.PathValue(itemIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
 		return
@@ -461,18 +460,18 @@ func (h *Handler) handleUpdateItemVariant(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	itemId, err := strconv.Atoi(r.PathValue(itemIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
 		return
 	}
-	variantId, err := uuid.Parse(r.PathValue(itemVariantIdParam))
+	variantId, err := strconv.Atoi(r.PathValue(itemVariantIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid item variant id"))
 		return
@@ -485,7 +484,7 @@ func (h *Handler) handleUpdateItemVariant(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = h.UpdateItemVariant(r.Context(), session, &shopId, &itemId, &variantId, &data)
+	err = h.UpdateItemVariant(r.Context(), session, shopId, itemId, variantId, &data)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -499,24 +498,24 @@ func (h *Handler) handleDeleteItemVariant(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	itemId, err := uuid.Parse(r.PathValue(itemIdParam))
+	itemId, err := strconv.Atoi(r.PathValue(itemIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid item id"))
 		return
 	}
-	variantId, err := uuid.Parse(r.PathValue(itemVariantIdParam))
+	variantId, err := strconv.Atoi(r.PathValue(itemVariantIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid item variant id"))
 		return
 	}
 
-	err = h.DeleteItemVariant(r.Context(), session, &shopId, &itemId, &variantId)
+	err = h.DeleteItemVariant(r.Context(), session, shopId, itemId, variantId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -530,7 +529,7 @@ func (h *Handler) handleCreateSubstitutionGroup(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
@@ -558,13 +557,13 @@ func (h *Handler) handleUpdateSubstitutionGroup(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	substitutionGroupId, err := uuid.Parse(r.PathValue(substitutionGroupIdParam))
+	substitutionGroupId, err := strconv.Atoi(r.PathValue(substitutionGroupIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid substitution id"))
 		return
@@ -577,7 +576,7 @@ func (h *Handler) handleUpdateSubstitutionGroup(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	err = h.UpdateSubstitutionGroup(r.Context(), session, &shopId, &substitutionGroupId, &data)
+	err = h.UpdateSubstitutionGroup(r.Context(), session, shopId, substitutionGroupId, &data)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -585,13 +584,13 @@ func (h *Handler) handleUpdateSubstitutionGroup(w http.ResponseWriter, r *http.R
 }
 
 func (h *Handler) handleGetSubstitutionGroups(w http.ResponseWriter, r *http.Request) {
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	substitutionGroups, err := h.GetSubstitutionGroups(r.Context(), &shopId)
+	substitutionGroups, err := h.GetSubstitutionGroups(r.Context(), shopId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -608,19 +607,19 @@ func (h *Handler) handleDeleteSubstitutionGroup(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	substitutionGroupId, err := uuid.Parse(r.PathValue(substitutionGroupIdParam))
+	substitutionGroupId, err := strconv.Atoi(r.PathValue(substitutionGroupIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid substitution id"))
 		return
 	}
 
-	err = h.DeleteSubstitutionGroup(r.Context(), session, &shopId, &substitutionGroupId)
+	err = h.DeleteSubstitutionGroup(r.Context(), session, shopId, substitutionGroupId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -640,7 +639,7 @@ func (h *Handler) handleCreateTab(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
@@ -669,13 +668,13 @@ func (h *Handler) handleGetTabs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	tabs, err := h.GetTabs(r.Context(), session, &shopId)
+	tabs, err := h.GetTabs(r.Context(), session, shopId)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -693,7 +692,7 @@ func (h *Handler) handleUpdateTab(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
@@ -712,7 +711,7 @@ func (h *Handler) handleUpdateTab(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.UpdateTab(r.Context(), session, &shopId, tabId, &data)
+	err = h.UpdateTab(r.Context(), session, shopId, tabId, &data)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -727,7 +726,7 @@ func (h *Handler) handleApproveTab(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopId, err := uuid.Parse(r.PathValue(shopIdParam))
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
@@ -739,7 +738,7 @@ func (h *Handler) handleApproveTab(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.ApproveTab(r.Context(), session, &shopId, tabId)
+	err = h.ApproveTab(r.Context(), session, shopId, tabId)
 	if err != nil {
 		h.handleError(w, err)
 		return

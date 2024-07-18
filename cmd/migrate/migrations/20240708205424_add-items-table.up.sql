@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS items (
-  id UUID NOT NULL,
-  shop_id UUID NOT NULL,
+  id SERIAL NOT NULL,
+  shop_id INT NOT NULL,
   name VARCHAR(255) NOT NULL,
   base_price REAL NOT NULL,
 
