@@ -20,6 +20,10 @@ type Date struct {
 	civil.Date
 }
 
+func DateOf(t time.Time) Date {
+	return Date{Date: civil.DateOf(t)}
+}
+
 func (d *Date) ScanDate(v pgtype.Date) error {
 	d.Date = civil.DateOf(v.Time)
 	return nil

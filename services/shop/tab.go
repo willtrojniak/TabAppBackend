@@ -112,3 +112,26 @@ func (h *Handler) GetTabs(ctx context.Context, session *sessions.Session, shopId
 
 	return tabs, nil
 }
+
+func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.Session, shopId int, tabId int, data *types.OrderCreate) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return err
+	}
+
+	tab, err := h.store.GetTab(ctx, shopId, tabId)
+	if err != nil {
+		return err
+	}
+
+	if !tab.IsActive() {
+		return services.NewDataConflictServiceError(nil)
+	}
+
+	err = h.store.AddOrderToTab(ctx, shopId, tabId, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

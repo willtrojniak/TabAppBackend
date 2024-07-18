@@ -64,6 +64,9 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.handleUpdateTab)
 	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs/{%v}/approve", shopIdParam, tabIdParam), h.handleApproveTab)
 
+	// Orders
+	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs/{%v}/add-order", shopIdParam, tabIdParam), h.handleAddOrderToTab)
+
 }
 
 func (h *Handler) handleCreateShop(w http.ResponseWriter, r *http.Request) {
@@ -743,4 +746,38 @@ func (h *Handler) handleApproveTab(w http.ResponseWriter, r *http.Request) {
 		h.handleError(w, err)
 		return
 	}
+}
+
+func (h *Handler) handleAddOrderToTab(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	tabId, err := strconv.Atoi(r.PathValue(tabIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid tab id"))
+		return
+	}
+
+	data := types.OrderCreate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.AddOrderToTab(r.Context(), session, shopId, tabId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
 }

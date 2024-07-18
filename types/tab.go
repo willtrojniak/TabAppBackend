@@ -4,6 +4,7 @@ import (
 	"log"
 	"reflect"
 	"regexp"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -27,6 +28,20 @@ func (s TabStatus) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+type Order struct {
+	Id       int `json:"id" db:"id" validate:"required,gte=1"`
+	Quantity int `json:"quantity" db:"quantity"`
+}
+
+type ItemOrder struct {
+	Quantity int     `json:"quantity" db:"quantity"`
+	Variants []Order `json:"variants" db:"variants" validate:"required,dive"`
+}
+
+type OrderCreate struct {
+	Items map[int]ItemOrder `json:"items" db:"items" validate:"required,dive"`
 }
 
 type TabBase struct {
@@ -60,6 +75,11 @@ type Tab struct {
 	Id             int      `json:"id" db:"id" validate:"required,gte=1"`
 	PendingUpdates *TabBase `json:"pending_updates" db:"pending_updates"`
 	Status         string   `json:"status" db:"status"`
+}
+
+func (t *Tab) IsActive() bool {
+	today := DateOf(time.Now())
+	return t.Status == TAB_STATUS_CONFIRMED.String() && !t.StartDate.After(today.Date) && !t.EndDate.Before(today.Date)
 }
 
 func TabUpdateStructLevelValidation(sl validator.StructLevel) {

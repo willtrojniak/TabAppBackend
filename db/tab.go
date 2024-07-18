@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
@@ -118,7 +119,7 @@ func (s *PgxStore) ApproveTab(ctx context.Context, shopId int, tabId int) error 
 	}
 	defer tx.Rollback(ctx)
 
-	result, err := tx.Exec(ctx, `
+	_, err = tx.Exec(ctx, `
     UPDATE tabs SET
       payment_method = u.payment_method,
       organization = u.organization,
@@ -131,19 +132,30 @@ func (s *PgxStore) ApproveTab(ctx context.Context, shopId int, tabId int) error 
       dollar_limit_per_order = u.dollar_limit_per_order,
       verification_method = u.verification_method,
       payment_details = u.payment_details,
-      billing_interval_days = u.billing_interval_days,
-      status = @status
+      billing_interval_days = u.billing_interval_days
     FROM tab_updates AS u
     WHERE tabs.id = @tabId AND tabs.shop_id = @shopId 
       AND u.shop_id = tabs.shop_id AND u.tab_id = tabs.id`,
 		pgx.NamedArgs{
 			"shopId": shopId,
 			"tabId":  tabId,
-			"status": types.TAB_STATUS_CONFIRMED,
 		})
 	if err != nil {
 		return handlePgxError(err)
 	}
+	result, err := tx.Exec(ctx, `
+    UPDATE tabs SET
+      status = @status
+    WHERE tabs.id = @tabId AND tabs.shop_id = @shopId 
+    `, pgx.NamedArgs{
+		"shopId": shopId,
+		"tabId":  tabId,
+		"status": types.TAB_STATUS_CONFIRMED,
+	})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
 	if result.RowsAffected() == 0 {
 		return services.NewNotFoundServiceError(nil)
 	}
@@ -317,6 +329,124 @@ func (s *PgxStore) setTabUsers(ctx context.Context, tx pgx.Tx, shopId int, tabId
 			"tabId":  tabId,
 			"emails": emails,
 		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	return nil
+}
+
+func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tabId int) (int, error) {
+	row := tx.QueryRow(ctx, `
+    SELECT b.id
+    FROM tab_bills b
+    LEFT JOIN tabs ON b.shop_id = tabs.shop_id AND b.tab_id = tabs.id
+    WHERE b.shop_id = @shopId AND b.tab_id = @tabId
+    AND b.is_paid = false AND b.start_time <= NOW() AND b.start_time + INTERVAL '1' day * tabs.billing_interval_days >= NOW() 
+    ORDER BY start_time DESC
+    `,
+		pgx.NamedArgs{
+			"shopId": shopId,
+			"tabId":  tabId,
+		})
+	var billId int
+	err := row.Scan(&billId)
+	if err == nil {
+		return billId, nil
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return 0, handlePgxError(err)
+	}
+
+	row = tx.QueryRow(ctx, `
+    INSERT INTO tab_bills 
+    (shop_id, tab_id, start_time) VALUES (@shopId, @tabId, NOW()) RETURNING id
+    `, pgx.NamedArgs{
+		"shopId": shopId,
+		"tabId":  tabId,
+	})
+	err = row.Scan(&billId)
+	if err != nil {
+		return 0, handlePgxError(err)
+	}
+
+	return billId, nil
+}
+
+func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, data *types.OrderCreate) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	defer tx.Rollback(ctx)
+
+	billId, err := s.getTargetBill(ctx, tx, shopId, tabId)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `
+    CREATE TEMPORARY TABLE _temp_upsert_order_items (LIKE order_items INCLUDING ALL ) ON COMMIT DROP`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+	_, err = tx.Exec(ctx, `
+	   CREATE TEMPORARY TABLE _temp_upsert_order_variants (LIKE order_variants INCLUDING ALL ) ON COMMIT DROP`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	type itemOrder struct {
+		id       int
+		quantity int
+	}
+
+	type variantOrder struct {
+		itemOrder
+		variantId int
+	}
+
+	itemOrders := make([]itemOrder, 0)
+	variantOrders := make([]variantOrder, 0)
+	for k, v := range data.Items {
+		itemOrders = append(itemOrders, itemOrder{id: k, quantity: v.Quantity})
+		for _, v := range v.Variants {
+			variantOrders = append(variantOrders, variantOrder{itemOrder: itemOrder{id: k, quantity: v.Quantity}, variantId: v.Id})
+		}
+	}
+
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_order_items"},
+		[]string{"shop_id", "tab_id", "bill_id", "item_id", "quantity"}, pgx.CopyFromSlice(len(itemOrders), func(i int) ([]any, error) {
+			return []any{shopId, tabId, billId, itemOrders[i].id, itemOrders[i].quantity}, nil
+		}))
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_order_variants"},
+		[]string{"shop_id", "tab_id", "bill_id", "item_id", "variant_id", "quantity"}, pgx.CopyFromSlice(len(variantOrders), func(i int) ([]any, error) {
+			return []any{shopId, tabId, billId, variantOrders[i].id, variantOrders[i].variantId, variantOrders[i].quantity}, nil
+		}))
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx, `
+    INSERT INTO order_items SELECT * FROM _temp_upsert_order_items ON CONFLICT (shop_id, tab_id, bill_id, item_id) DO UPDATE
+    SET quantity = order_items.quantity + excluded.quantity`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+	_, err = tx.Exec(ctx, `
+	   INSERT INTO order_variants SELECT * FROM _temp_upsert_order_variants ON CONFLICT (shop_id, tab_id, bill_id, item_id, variant_id) DO UPDATE
+	   SET quantity = order_variants.quantity + excluded.quantity`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	err = tx.Commit(ctx)
 	if err != nil {
 		return handlePgxError(err)
 	}
