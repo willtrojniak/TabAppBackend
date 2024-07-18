@@ -58,9 +58,9 @@ type TabCreate struct {
 
 type Tab struct {
 	TabCreate
-	Id      uint     `json:"id" db:"id" validate:"required,gte=1"`
-	Updates *TabBase `json:"updates" db:"updates"`
-	Status  string   `json:"status" db:"status"`
+	Id             uint     `json:"id" db:"id" validate:"required,gte=1"`
+	PendingUpdates *TabBase `json:"pending_updates" db:"pending_updates"`
+	Status         string   `json:"status" db:"status"`
 }
 
 func TabUpdateStructLevelValidation(sl validator.StructLevel) {

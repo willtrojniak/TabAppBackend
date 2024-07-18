@@ -78,6 +78,28 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shop
 	return nil
 }
 
+func (h *Handler) ApproveTab(ctx context.Context, session *sessions.Session, shopId *uuid.UUID, tabId int) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return err
+	}
+
+	tab, err := h.store.GetTab(ctx, shopId, tabId)
+	if err != nil {
+		return err
+	}
+	if tab.Status != types.TAB_STATUS_PENDING.String() && tab.Status != types.TAB_STATUS_CONFIRMED.String() {
+		return services.NewDataConflictServiceError(nil)
+	}
+
+	err = h.store.ApproveTab(ctx, shopId, tabId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (h *Handler) GetTabs(ctx context.Context, session *sessions.Session, shopId *uuid.UUID) ([]types.Tab, error) {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {

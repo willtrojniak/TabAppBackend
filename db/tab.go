@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -111,6 +112,62 @@ func (s *PgxStore) UpdateTab(ctx context.Context, shopId *uuid.UUID, tabId int, 
 
 }
 
+func (s *PgxStore) ApproveTab(ctx context.Context, shopId *uuid.UUID, tabId int) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+	defer tx.Rollback(ctx)
+
+	result, err := tx.Exec(ctx, `
+    UPDATE tabs SET
+      payment_method = u.payment_method,
+      organization = u.organization,
+      display_name = u.display_name,
+      start_date = u.start_date,
+      end_date = u.end_date,
+      daily_start_time = u.daily_start_time,
+      daily_end_time = u.daily_end_time,
+      active_days_of_wk = u.active_days_of_wk,
+      dollar_limit_per_order = u.dollar_limit_per_order,
+      verification_method = u.verification_method,
+      payment_details = u.payment_details,
+      billing_interval_days = u.billing_interval_days,
+      status = @status
+    FROM tab_updates AS u
+    WHERE tabs.id = @tabId AND tabs.shop_id = @shopId 
+      AND u.shop_id = tabs.shop_id AND u.tab_id = tabs.id`,
+		pgx.NamedArgs{
+			"shopId": shopId,
+			"tabId":  tabId,
+			"status": types.TAB_STATUS_CONFIRMED,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+	if result.RowsAffected() == 0 {
+		return services.NewNotFoundServiceError(nil)
+	}
+
+	_, err = tx.Exec(ctx, `
+    DELETE FROM tab_updates
+    WHERE shop_id = @shopId AND tab_id = @tabId`,
+		pgx.NamedArgs{
+			"shopId": shopId,
+			"tabId":  tabId,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+	return nil
+
+}
+
 func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId *uuid.UUID, tabId int, data *types.TabUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -169,7 +226,7 @@ func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId *uuid.UUID, tabId i
 
 func (s *PgxStore) GetTabs(ctx context.Context, shopId *uuid.UUID) ([]types.Tab, error) {
 	rows, err := s.pool.Query(ctx, `
-    SELECT tabs.*, to_jsonb(u) - 'shop_id' - 'tab_id' as updates, array_remove(array_agg(tab_users.email), null) as verification_list
+    SELECT tabs.*, to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates, array_remove(array_agg(tab_users.email), null) as verification_list
     FROM tabs
     LEFT JOIN tab_updates AS u ON tabs.shop_id = u.shop_id AND tabs.id = u.tab_id
     LEFT JOIN tab_users ON tabs.shop_id = tab_users.shop_id AND tabs.id = tab_users.tab_id
@@ -192,8 +249,12 @@ func (s *PgxStore) GetTabs(ctx context.Context, shopId *uuid.UUID) ([]types.Tab,
 
 func (s *PgxStore) GetTab(ctx context.Context, shopId *uuid.UUID, tabId int) (types.Tab, error) {
 	rows, err := s.pool.Query(ctx, `
-    SELECT * FROM tabs
-    WHERE id = @tabId AND shop_id = @shopId`,
+    SELECT tabs.*, to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates, array_remove(array_agg(tab_users.email), null) as verification_list
+    FROM tabs
+    LEFT JOIN tab_updates AS u ON tabs.shop_id = u.shop_id AND tabs.id = u.tab_id
+    LEFT JOIN tab_users ON tabs.shop_id = tab_users.shop_id AND tabs.id = tab_users.tab_id
+    WHERE tabs.shop_id = @shopId AND tabs.id = @tabId
+    GROUP BY tabs.shop_id, tabs.id, u.*`,
 		pgx.NamedArgs{
 			"shopId": shopId,
 			"tabId":  tabId,
