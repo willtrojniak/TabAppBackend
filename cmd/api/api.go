@@ -34,7 +34,7 @@ func NewAPIServer(addr string, store *db.PgxStore, cache *redis.Client) *APIServ
 }
 
 func (s *APIServer) Run() error {
-	sessionManager := sessions.New(s.cache, time.Hour*24*30, services.HandleHttpError, slog.Default())
+	sessionManager := sessions.New(s.cache, time.Hour*24*30, time.Hour*1, services.HandleHttpError, slog.Default())
 
 	authHandler, err := auth.NewHandler(services.HandleHttpError, sessionManager, slog.Default())
 	if err != nil {

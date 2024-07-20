@@ -16,10 +16,11 @@ import (
 )
 
 type Handler struct {
-	logger         *slog.Logger
-	store          *redis.Client
-	expirationTime time.Duration
-	handleError    services.HTTPErrorHandler
+	logger               *slog.Logger
+	store                *redis.Client
+	authExpirationTime   time.Duration
+	unauthExpirationTime time.Duration
+	handleError          services.HTTPErrorHandler
 }
 
 type sessionData struct {
@@ -42,13 +43,14 @@ var (
 	safe_methods = []string{"GET", "HEAD", "OPTIONS", "TRACE"}
 )
 
-func New(store *redis.Client, expiryTime time.Duration, h services.HTTPErrorHandler, logger *slog.Logger) *Handler {
+func New(store *redis.Client, authExpiryTime time.Duration, unauthExpiryTime time.Duration, h services.HTTPErrorHandler, logger *slog.Logger) *Handler {
 
 	return &Handler{
-		logger:         logger,
-		store:          store,
-		expirationTime: expiryTime,
-		handleError:    h,
+		logger:               logger,
+		store:                store,
+		authExpirationTime:   authExpiryTime,
+		unauthExpirationTime: unauthExpiryTime,
+		handleError:          h,
 	}
 }
 
@@ -79,12 +81,16 @@ func (s *Handler) CreateSession(w http.ResponseWriter, r *http.Request, userId s
 		}
 	}
 
-	if err := s.store.Set(r.Context(), sessionID, jsonString, s.expirationTime).Err(); err != nil {
+	expiryTime := s.authExpirationTime
+	if userId == "" {
+		expiryTime = s.unauthExpirationTime
+	}
+	if err := s.store.Set(r.Context(), sessionID, jsonString, expiryTime).Err(); err != nil {
 		s.logger.Error("Session Manager could not save session to redis")
 		return nil, services.NewInternalServiceError(err)
 	}
 
-	s.createSessionCookie(w, r, sessionID)
+	s.createSessionCookie(w, r, sessionID, int(expiryTime.Seconds()))
 	s.setCSRFHeader(w, &session)
 	s.logger.Debug("Session created", "sessionId", sessionID)
 
@@ -189,11 +195,12 @@ func (s *Handler) setCSRFHeader(w http.ResponseWriter, session *Session) {
 	w.Header().Set(csrf_header, session.data.CSRFToken)
 }
 
-func (s *Handler) createSessionCookie(w http.ResponseWriter, r *http.Request, sessionId string) {
+func (s *Handler) createSessionCookie(w http.ResponseWriter, r *http.Request, sessionId string, expiryTime int) {
+
 	c := &http.Cookie{
 		Name:     session_cookie,
 		Value:    sessionId,
-		MaxAge:   int(s.expirationTime.Seconds()),
+		MaxAge:   expiryTime,
 		Secure:   r.TLS != nil,
 		HttpOnly: true,
 		Path:     "/",
