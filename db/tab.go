@@ -235,7 +235,7 @@ func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId int, tabId int, dat
 
 }
 
-func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.Tab, error) {
+func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.TabOverview, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT tabs.*, to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates, array_remove(array_agg(tab_users.email), null) as verification_list
     FROM tabs
@@ -251,16 +251,18 @@ func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.Tab, error)
 		return nil, handlePgxError(err)
 	}
 
-	tabs, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.Tab])
+	tabs, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.TabOverview])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}
 	return tabs, nil
 }
 
-func (s *PgxStore) GetTab(ctx context.Context, shopId int, tabId int) (types.Tab, error) {
+func (s *PgxStore) GetTabById(ctx context.Context, shopId int, tabId int) (types.Tab, error) {
 	rows, err := s.pool.Query(ctx, `
-    SELECT tabs.*, to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates, array_remove(array_agg(tab_users.email), null) as verification_list
+    SELECT tabs.*, 
+      to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates,
+      array_remove(array_agg(tab_users.email), null) as verification_list
     FROM tabs
     LEFT JOIN tab_updates AS u ON tabs.shop_id = u.shop_id AND tabs.id = u.tab_id
     LEFT JOIN tab_users ON tabs.shop_id = tab_users.shop_id AND tabs.id = tab_users.tab_id
@@ -374,7 +376,7 @@ func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tab
 	return billId, nil
 }
 
-func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, data *types.OrderCreate) error {
+func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, data *types.BillOrderCreate) error {
 	err := s.updateTabOrders(ctx, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `
     INSERT INTO order_items SELECT * FROM _temp_upsert_order_items ON CONFLICT (shop_id, tab_id, bill_id, item_id) DO UPDATE
@@ -397,7 +399,7 @@ func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, dat
 	return nil
 }
 
-func (s *PgxStore) RemoveOrderFromTab(ctx context.Context, shopId int, tabId int, data *types.OrderCreate) error {
+func (s *PgxStore) RemoveOrderFromTab(ctx context.Context, shopId int, tabId int, data *types.BillOrderCreate) error {
 	err := s.updateTabOrders(ctx, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `
       UPDATE order_items SET
@@ -432,7 +434,7 @@ func (s *PgxStore) RemoveOrderFromTab(ctx context.Context, shopId int, tabId int
 	return nil
 }
 
-func (s *PgxStore) updateTabOrders(ctx context.Context, updateFn func(pgx.Tx) error, shopId int, tabId int, data *types.OrderCreate) error {
+func (s *PgxStore) updateTabOrders(ctx context.Context, updateFn func(pgx.Tx) error, shopId int, tabId int, data *types.BillOrderCreate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -468,10 +470,10 @@ func (s *PgxStore) updateTabOrders(ctx context.Context, updateFn func(pgx.Tx) er
 
 	itemOrders := make([]itemOrder, 0)
 	variantOrders := make([]variantOrder, 0)
-	for k, v := range data.Items {
-		itemOrders = append(itemOrders, itemOrder{id: k, quantity: *v.Quantity})
-		for _, v := range v.Variants {
-			variantOrders = append(variantOrders, variantOrder{itemOrder: itemOrder{id: k, quantity: *v.Quantity}, variantId: v.Id})
+	for _, i := range data.Items {
+		itemOrders = append(itemOrders, itemOrder{id: i.Id, quantity: *i.Quantity})
+		for _, v := range i.Variants {
+			variantOrders = append(variantOrders, variantOrder{itemOrder: itemOrder{id: i.Id, quantity: *v.Quantity}, variantId: v.Id})
 		}
 	}
 

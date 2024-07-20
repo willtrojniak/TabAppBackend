@@ -30,20 +30,60 @@ func (s TabStatus) String() string {
 	}
 }
 
-type Order struct {
+type OrderCreate struct {
 	Id       int  `json:"id" db:"id" validate:"required,gte=1"`
 	Quantity *int `json:"quantity" db:"quantity" validate:"required,gte=0"`
 }
 
-type ItemOrder struct {
-	Quantity *int    `json:"quantity" db:"quantity" validate:"required,gte=0"`
-	Variants []Order `json:"variants" db:"variants" validate:"required,dive"`
+type ItemOrderCreate struct {
+	OrderCreate
+	Variants []OrderCreate `json:"variants" db:"variants" validate:"required,dive"`
 }
 
-type OrderCreate struct {
-	Items map[int]ItemOrder `json:"items" db:"items" validate:"required,dive,keys,endkeys,required"`
+type BillOrderCreate struct {
+	Items []ItemOrderCreate `json:"items" db:"items" validate:"required,dive"`
 }
 
+type Bill struct {
+	Id        int         `json:"id" db:"id" validate:"required,gte=1"`
+	StartTime time.Time   `json:"start_time" db:"start_time" validate:"required"`
+	IsPaid    bool        `json:"is_paid" db:"is_paid" validate:"required"`
+	Orders    []ItemOrder `json:"orders" db:"orders" validate:"required"`
+}
+
+/*
+		{
+		  Bills: [
+		    {
+		      id: 1,
+		      start_time: July 2, 6 AM,
+		      is_paid: false,
+		      orders: [
+		        {
+		          id: 3
+		          name: "Latte"
+		          price: 4.50,
+		          quantity: 22,
+		          variants: [
+		            {
+	                id: 3
+	                name: "Small"
+	                price: 0.00,
+	                quantity: 10,
+		            },
+		            {
+	                id: 3
+	                name: "Large"
+	                price: 0.50,
+	                quantity: 12,
+		            }
+		          ]
+		        }
+		      ]
+		    }
+		  ]
+		}
+*/
 type TabBase struct {
 	PaymentMethod       string  `json:"payment_method" db:"payment_method" validate:"required,oneof='in person' 'chartstring'"`
 	Organization        string  `json:"organization" db:"organization" validate:"required,min=3,max=64"`
@@ -70,14 +110,19 @@ type TabCreate struct {
 	OwnerId string `json:"owner_id" db:"owner_id" validate:"required"`
 }
 
-type Tab struct {
+type TabOverview struct {
 	TabCreate
 	Id             int      `json:"id" db:"id" validate:"required,gte=1"`
 	PendingUpdates *TabBase `json:"pending_updates" db:"pending_updates"`
 	Status         string   `json:"status" db:"status"`
 }
 
-func (t *Tab) IsActive() bool {
+type Tab struct {
+	TabOverview
+	Bills []Bill `json:"bills" db:"bills" validate:"required,dive"`
+}
+
+func (t *TabOverview) IsActive() bool {
 	today := DateOf(time.Now())
 	return t.Status == TAB_STATUS_CONFIRMED.String() && !t.StartDate.After(today.Date) && !t.EndDate.Before(today.Date)
 }

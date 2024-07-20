@@ -37,7 +37,7 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shop
 	}
 
 	// TODO: Perform within a transaction
-	tab, err := h.store.GetTab(ctx, shopId, tabId)
+	tab, err := h.store.GetTabById(ctx, shopId, tabId)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (h *Handler) ApproveTab(ctx context.Context, session *sessions.Session, sho
 		return err
 	}
 
-	tab, err := h.store.GetTab(ctx, shopId, tabId)
+	tab, err := h.store.GetTabById(ctx, shopId, tabId)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (h *Handler) ApproveTab(ctx context.Context, session *sessions.Session, sho
 	return nil
 }
 
-func (h *Handler) GetTabs(ctx context.Context, session *sessions.Session, shopId int) ([]types.Tab, error) {
+func (h *Handler) GetTabs(ctx context.Context, session *sessions.Session, shopId int) ([]types.TabOverview, error) {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,21 @@ func (h *Handler) GetTabs(ctx context.Context, session *sessions.Session, shopId
 	return tabs, nil
 }
 
-func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.Session, shopId int, tabId int, data *types.OrderCreate) error {
+func (h *Handler) GetTabById(ctx context.Context, session *sessions.Session, shopId int, tabId int) (types.Tab, error) {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return types.Tab{}, err
+	}
+
+	tab, err := h.store.GetTabById(ctx, shopId, tabId)
+	if err != nil {
+		return types.Tab{}, err
+	}
+
+	return tab, nil
+}
+
+func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.Session, shopId int, tabId int, data *types.BillOrderCreate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
@@ -124,7 +138,7 @@ func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.Session, 
 		return err
 	}
 
-	tab, err := h.store.GetTab(ctx, shopId, tabId)
+	tab, err := h.store.GetTabById(ctx, shopId, tabId)
 	if err != nil {
 		return err
 	}
@@ -141,7 +155,7 @@ func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.Session, 
 	return nil
 }
 
-func (h *Handler) RemoveOrderFromTab(ctx context.Context, session *sessions.Session, shopId int, tabId int, data *types.OrderCreate) error {
+func (h *Handler) RemoveOrderFromTab(ctx context.Context, session *sessions.Session, shopId int, tabId int, data *types.BillOrderCreate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
@@ -152,7 +166,7 @@ func (h *Handler) RemoveOrderFromTab(ctx context.Context, session *sessions.Sess
 		return err
 	}
 
-	tab, err := h.store.GetTab(ctx, shopId, tabId)
+	tab, err := h.store.GetTabById(ctx, shopId, tabId)
 	if err != nil {
 		return err
 	}

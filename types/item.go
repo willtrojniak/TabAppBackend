@@ -22,6 +22,11 @@ type ItemOverview struct {
 	Id int `json:"id" db:"id" validate:"required,gte=1"`
 }
 
+type ItemOrder struct {
+	ItemOverview
+	Variants []ItemVariant `json:"variants" db:"variants" validate:"required,dive"`
+}
+
 type Item struct {
 	ItemOverview
 	Categories         []CategoryOverview  `json:"categories" db:"categories" validate:"required,dive"`
@@ -40,10 +45,14 @@ func (item *Item) GetOverview() ItemOverview {
 	}
 }
 
-type ItemVariantUpdate struct {
+type itemVariantBase struct {
 	Name  string   `json:"name" db:"name" validate:"required,min=1,max=64"`
 	Price *float32 `json:"price" db:"price" validate:"required,gte=0"`
-	Index *int     `json:"index" db:"index" validate:"required"`
+}
+
+type ItemVariantUpdate struct {
+	itemVariantBase
+	Index *int `json:"index" db:"index" validate:"required"`
 }
 
 type ItemVariantCreate struct {
@@ -53,6 +62,6 @@ type ItemVariantCreate struct {
 }
 
 type ItemVariant struct {
-	ItemVariantUpdate
+	itemVariantBase
 	Id int `json:"id" db:"id" validate:"required,gte=1"`
 }
