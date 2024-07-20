@@ -31,17 +31,17 @@ func (s TabStatus) String() string {
 }
 
 type Order struct {
-	Id       int `json:"id" db:"id" validate:"required,gte=1"`
-	Quantity int `json:"quantity" db:"quantity"`
+	Id       int  `json:"id" db:"id" validate:"required,gte=1"`
+	Quantity *int `json:"quantity" db:"quantity" validate:"required,gte=0"`
 }
 
 type ItemOrder struct {
-	Quantity int     `json:"quantity" db:"quantity"`
+	Quantity *int    `json:"quantity" db:"quantity" validate:"required,gte=0"`
 	Variants []Order `json:"variants" db:"variants" validate:"required,dive"`
 }
 
 type OrderCreate struct {
-	Items map[int]ItemOrder `json:"items" db:"items" validate:"required,dive"`
+	Items map[int]ItemOrder `json:"items" db:"items" validate:"required,dive,keys,endkeys,required"`
 }
 
 type TabBase struct {

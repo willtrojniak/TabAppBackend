@@ -375,6 +375,64 @@ func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tab
 }
 
 func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, data *types.OrderCreate) error {
+	err := s.updateTabOrders(ctx, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `
+    INSERT INTO order_items SELECT * FROM _temp_upsert_order_items ON CONFLICT (shop_id, tab_id, bill_id, item_id) DO UPDATE
+    SET quantity = order_items.quantity + excluded.quantity`)
+		if err != nil {
+			return handlePgxError(err)
+		}
+		_, err = tx.Exec(ctx, `
+	   INSERT INTO order_variants SELECT * FROM _temp_upsert_order_variants ON CONFLICT (shop_id, tab_id, bill_id, item_id, variant_id) DO UPDATE
+	   SET quantity = order_variants.quantity + excluded.quantity`)
+		if err != nil {
+			return handlePgxError(err)
+		}
+		return nil
+	}, shopId, tabId, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *PgxStore) RemoveOrderFromTab(ctx context.Context, shopId int, tabId int, data *types.OrderCreate) error {
+	err := s.updateTabOrders(ctx, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `
+      UPDATE order_items SET
+        quantity = order_items.quantity - u.quantity
+      FROM _temp_upsert_order_items AS u
+      WHERE order_items.shop_id = u.shop_id
+        AND order_items.tab_id = u.tab_id 
+        AND order_items.bill_id = u.bill_id 
+        AND order_items.item_id = u.item_id`)
+
+		if err != nil {
+			return handlePgxError(err)
+		}
+		_, err = tx.Exec(ctx, `
+      UPDATE order_variants SET
+        quantity = order_variants.quantity - u.quantity
+      FROM _temp_upsert_order_variants AS u
+      WHERE order_variants.shop_id = u.shop_id
+        AND order_variants.tab_id = u.tab_id 
+        AND order_variants.bill_id = u.bill_id 
+        AND order_variants.item_id = u.item_id
+        AND order_variants.variant_id = u.variant_id`)
+		if err != nil {
+			return handlePgxError(err)
+		}
+		return nil
+	}, shopId, tabId, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *PgxStore) updateTabOrders(ctx context.Context, updateFn func(pgx.Tx) error, shopId int, tabId int, data *types.OrderCreate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -411,9 +469,9 @@ func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, dat
 	itemOrders := make([]itemOrder, 0)
 	variantOrders := make([]variantOrder, 0)
 	for k, v := range data.Items {
-		itemOrders = append(itemOrders, itemOrder{id: k, quantity: v.Quantity})
+		itemOrders = append(itemOrders, itemOrder{id: k, quantity: *v.Quantity})
 		for _, v := range v.Variants {
-			variantOrders = append(variantOrders, variantOrder{itemOrder: itemOrder{id: k, quantity: v.Quantity}, variantId: v.Id})
+			variantOrders = append(variantOrders, variantOrder{itemOrder: itemOrder{id: k, quantity: *v.Quantity}, variantId: v.Id})
 		}
 	}
 
@@ -433,17 +491,9 @@ func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, dat
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx, `
-    INSERT INTO order_items SELECT * FROM _temp_upsert_order_items ON CONFLICT (shop_id, tab_id, bill_id, item_id) DO UPDATE
-    SET quantity = order_items.quantity + excluded.quantity`)
+	err = updateFn(tx)
 	if err != nil {
-		return handlePgxError(err)
-	}
-	_, err = tx.Exec(ctx, `
-	   INSERT INTO order_variants SELECT * FROM _temp_upsert_order_variants ON CONFLICT (shop_id, tab_id, bill_id, item_id, variant_id) DO UPDATE
-	   SET quantity = order_variants.quantity + excluded.quantity`)
-	if err != nil {
-		return handlePgxError(err)
+		return err
 	}
 
 	err = tx.Commit(ctx)

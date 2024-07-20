@@ -119,6 +119,11 @@ func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.Session, 
 		return err
 	}
 
+	err = types.ValidateData(data, h.logger)
+	if err != nil {
+		return err
+	}
+
 	tab, err := h.store.GetTab(ctx, shopId, tabId)
 	if err != nil {
 		return err
@@ -129,6 +134,34 @@ func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.Session, 
 	}
 
 	err = h.store.AddOrderToTab(ctx, shopId, tabId, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *Handler) RemoveOrderFromTab(ctx context.Context, session *sessions.Session, shopId int, tabId int, data *types.OrderCreate) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return err
+	}
+
+	err = types.ValidateData(data, h.logger)
+	if err != nil {
+		return err
+	}
+
+	tab, err := h.store.GetTab(ctx, shopId, tabId)
+	if err != nil {
+		return err
+	}
+
+	if !tab.IsActive() {
+		return services.NewDataConflictServiceError(nil)
+	}
+
+	err = h.store.RemoveOrderFromTab(ctx, shopId, tabId, data)
 	if err != nil {
 		return err
 	}
