@@ -179,6 +179,26 @@ func (s *PgxStore) ApproveTab(ctx context.Context, shopId int, tabId int) error 
 
 }
 
+func (s *PgxStore) MarkTabBillPaid(ctx context.Context, shopId int, tabId int, billId int) error {
+	result, err := s.pool.Exec(ctx, `
+    UPDATE tab_bills 
+    SET is_paid = true 
+    WHERE shop_id = @shopId AND tab_id = @tabId AND id = @billId 
+    `, pgx.NamedArgs{
+		"shopId": shopId,
+		"tabId":  tabId,
+		"billId": billId,
+	})
+	if err != nil {
+		return handlePgxError(err)
+	}
+	if result.RowsAffected() == 0 {
+		return services.NewNotFoundServiceError(nil)
+	}
+
+	return nil
+}
+
 func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId int, tabId int, data *types.TabUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

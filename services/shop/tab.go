@@ -99,6 +99,20 @@ func (h *Handler) ApproveTab(ctx context.Context, session *sessions.Session, sho
 	return nil
 }
 
+func (h *Handler) MarkTabBillPaid(ctx context.Context, session *sessions.Session, shopId int, tabId int, billId int) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return err
+	}
+
+	err = h.store.MarkTabBillPaid(ctx, shopId, tabId, billId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (h *Handler) GetTabs(ctx context.Context, session *sessions.Session, shopId int) ([]types.TabOverview, error) {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {

@@ -17,6 +17,7 @@ const (
 	itemVariantIdParam       = "itemVariantId"
 	substitutionGroupIdParam = "substitutionGroupId"
 	tabIdParam               = "tabId"
+	billIdParam              = "billId"
 )
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
@@ -64,6 +65,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.handleGetTabById)
 	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.handleUpdateTab)
 	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs/{%v}/approve", shopIdParam, tabIdParam), h.handleApproveTab)
+	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs/{%v}/bills/{%v}/close", shopIdParam, tabIdParam, billIdParam), h.handleCloseTabBill)
 
 	// Orders
 	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs/{%v}/add-order", shopIdParam, tabIdParam), h.handleAddOrderToTab)
@@ -840,6 +842,39 @@ func (h *Handler) handleRemoveOrderFromTab(w http.ResponseWriter, r *http.Reques
 	}
 
 	err = h.RemoveOrderFromTab(r.Context(), session, shopId, tabId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+}
+
+func (h *Handler) handleCloseTabBill(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	tabId, err := strconv.Atoi(r.PathValue(tabIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid tab id"))
+		return
+	}
+
+	billId, err := strconv.Atoi(r.PathValue(billIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid bill id"))
+		return
+	}
+
+	err = h.MarkTabBillPaid(r.Context(), session, shopId, tabId, billId)
 	if err != nil {
 		h.handleError(w, err)
 		return
