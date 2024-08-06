@@ -24,7 +24,8 @@ type ItemOverview struct {
 
 type ItemOrder struct {
 	ItemOverview
-	Variants []ItemVariant `json:"variants" db:"variants" validate:"required,dive"`
+	Quantity int                `json:"quantity" db:"quantity" validate:"required,gte=0"`
+	Variants []ItemVariantOrder `json:"variants" db:"variants" validate:"required,dive"`
 }
 
 type Item struct {
@@ -64,4 +65,9 @@ type ItemVariantCreate struct {
 type ItemVariant struct {
 	itemVariantBase
 	Id int `json:"id" db:"id" validate:"required,gte=1"`
+}
+
+type ItemVariantOrder struct {
+	ItemVariant
+	Quantity int `json:"quantity" db:"quantity" validate:"required,gte=0"`
 }

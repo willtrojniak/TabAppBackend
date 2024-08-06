@@ -76,31 +76,38 @@ func (s *PgxStore) GetItems(ctx context.Context, shopId int) ([]types.ItemOvervi
 func (s *PgxStore) GetItem(ctx context.Context, shopId int, itemId int) (types.Item, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT items.id, items.name, items.base_price,
-    COALESCE(json_agg(item_categories ORDER BY item_categories.name) FILTER (WHERE item_categories.id IS NOT NULL), '[]') AS categories, 
-    COALESCE(json_agg(item_variants ORDER BY item_variants.index) FILTER (WHERE item_variants.id IS NOT NULL), '[]') AS variants,
-    COALESCE(json_agg(addons_table ORDER BY item_addons.index) FILTER (WHERE addons_table.id IS NOT NULL), '[]') AS addons,
-    COALESCE(json_agg(substitution_groups ORDER BY substitution_groups.index) FILTER (WHERE substitution_groups.id IS NOT NULL), '[]') AS substitution_groups
+      (SELECT COALESCE(json_agg(item_categories ORDER BY item_categories.name) FILTER (WHERE item_categories.id IS NOT NULL), '[]')
+       FROM items_to_categories
+       LEFT JOIN item_categories ON items_to_categories.shop_id = item_categories.shop_id AND items_to_categories.item_category_id = item_categories.id
+       WHERE items_to_categories.shop_id = items.shop_id AND items_to_categories.item_id = items.id
+      ) as categories,
+      (SELECT COALESCE(json_agg(item_variants ORDER BY item_variants.index) FILTER (WHERE item_variants.id IS NOT NULL), '[]')
+       FROM item_variants
+       WHERE items.shop_id = item_variants.shop_id AND items.id = item_variants.item_id
+      ) AS variants,
+      (SELECT COALESCE(json_agg(addons_table ORDER BY item_addons.index) FILTER (WHERE addons_table.id IS NOT NULL), '[]')
+       FROM item_addons
+       LEFT JOIN items AS addons_table ON item_addons.addon_id = addons_table.id AND item_addons.shop_id = addons_table.shop_id
+       WHERE item_addons.item_id = items.id AND item_addons.shop_id = items.shop_id
+      ) AS addons,
+      (SELECT COALESCE(json_agg(substitution_groups ORDER BY substitution_groups.index) FILTER (WHERE substitution_groups.id IS NOT NULL), '[]')
+        FROM (SELECT items_to_item_substitution_groups.item_id, items_to_item_substitution_groups.shop_id, items_to_item_substitution_groups.index, item_substitution_groups.name, items_to_item_substitution_groups.substitution_group_id AS id,
+              COALESCE(json_agg(items ORDER BY item_substitution_groups_to_items.index) FILTER (WHERE items.id IS NOT NULL), '[]') AS substitutions
+              FROM items_to_item_substitution_groups
+              LEFT JOIN item_substitution_groups ON 
+                item_substitution_groups.id = items_to_item_substitution_groups.substitution_group_id
+                AND item_substitution_groups.shop_id = items_to_item_substitution_groups.shop_id
+              LEFT JOIN item_substitution_groups_to_items ON
+                items_to_item_substitution_groups.substitution_group_id = item_substitution_groups_to_items.substitution_group_id
+                AND items_to_item_substitution_groups.shop_id = item_substitution_groups_to_items.shop_id
+              LEFT JOIN items ON
+                item_substitution_groups_to_items.item_id = items.id
+                AND item_substitution_groups_to_items.shop_id = items.shop_id
+              WHERE items_to_item_substitution_groups.shop_id = items.shop_id AND items_to_item_substitution_groups.item_id = items.id
+              GROUP BY items_to_item_substitution_groups.substitution_group_id, items_to_item_substitution_groups.item_id, items_to_item_substitution_groups.shop_id, items_to_item_substitution_groups.index, item_substitution_groups.name
+             ) AS substitution_groups
+      ) AS substitution_groups
     FROM items
-    LEFT JOIN items_to_categories ON items.shop_id = items_to_categories.shop_id AND items.id = items_to_categories.item_id
-    LEFT JOIN item_categories ON items_to_categories.shop_id = item_categories.shop_id AND items_to_categories.item_category_id = item_categories.id
-    LEFT JOIN item_variants ON items.shop_id = item_variants.shop_id AND items.id = item_variants.item_id
-    LEFT JOIN item_addons ON items.id = item_addons.item_id AND items.shop_id = item_addons.shop_id
-    LEFT JOIN items AS addons_table ON item_addons.addon_id = addons_table.id AND item_addons.shop_id = addons_table.shop_id
-    LEFT JOIN (
-      SELECT items_to_item_substitution_groups.item_id, items_to_item_substitution_groups.shop_id, items_to_item_substitution_groups.index, item_substitution_groups.name, items_to_item_substitution_groups.substitution_group_id AS id,
-      COALESCE(json_agg(items ORDER BY item_substitution_groups_to_items.index) FILTER (WHERE items.id IS NOT NULL), '[]') AS substitutions
-      FROM items_to_item_substitution_groups
-      LEFT JOIN item_substitution_groups ON 
-        item_substitution_groups.id = items_to_item_substitution_groups.substitution_group_id
-        AND item_substitution_groups.shop_id = items_to_item_substitution_groups.shop_id
-      LEFT JOIN item_substitution_groups_to_items ON
-        items_to_item_substitution_groups.substitution_group_id = item_substitution_groups_to_items.substitution_group_id
-        AND items_to_item_substitution_groups.shop_id = item_substitution_groups_to_items.shop_id
-      LEFT JOIN items ON
-        item_substitution_groups_to_items.item_id = items.id
-        AND item_substitution_groups_to_items.shop_id = items.shop_id
-      GROUP BY items_to_item_substitution_groups.substitution_group_id, items_to_item_substitution_groups.item_id, items_to_item_substitution_groups.shop_id, items_to_item_substitution_groups.index, item_substitution_groups.name
-    ) AS substitution_groups ON items.id = substitution_groups.item_id AND items.shop_id = substitution_groups.shop_id
     WHERE items.shop_id = @shopId AND items.id = @itemId
     GROUP BY items.shop_id, items.id`,
 		pgx.NamedArgs{
@@ -190,7 +197,7 @@ func (s *PgxStore) DeleteItem(ctx context.Context, shopId int, itemId int) error
 
 func (s *PgxStore) CreateItemVariant(ctx context.Context, data *types.ItemVariantCreate) error {
 	_, err := s.pool.Exec(ctx, `
-    INSERT INTO item_variants (shop_id, item_id, id, name, price, index) VALUES (@shopId, @itemId, @id, @name, @price, @index)`,
+    INSERT INTO item_variants (shop_id, item_id, name, price, index) VALUES (@shopId, @itemId, @name, @price, @index)`,
 		pgx.NamedArgs{
 			"shopId": data.ShopId,
 			"itemId": data.ItemId,

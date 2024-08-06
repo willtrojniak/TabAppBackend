@@ -261,13 +261,39 @@ func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.TabOverview
 func (s *PgxStore) GetTabById(ctx context.Context, shopId int, tabId int) (types.Tab, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT tabs.*, 
-      to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates,
-      array_remove(array_agg(tab_users.email), null) as verification_list
+      (SELECT to_jsonb(tab_updates.*) as pending_updates
+       FROM tab_updates
+       WHERE tab_updates.shop_id = tabs.shop_id AND tab_updates.tab_id = tabs.id
+      ) AS pending_updates,
+      (SELECT COALESCE(json_agg(tab_bills) FILTER (WHERE tab_bills.id IS NOT NULL), '[]') AS bills
+        FROM 
+        (SELECT tab_bills.*, 
+          (SELECT COALESCE(json_agg(items) FILTER (WHERE items.id IS NOT NULL), '[]') AS items
+            FROM
+            (SELECT items.*, oi.quantity,
+              (SELECT COALESCE(json_agg(variants) FILTER (WHERE variants.id IS NOT NULL), '[]') AS variants
+                FROM
+                (SELECT iv.*, ov.quantity
+                  FROM order_variants AS ov
+                  LEFT JOIN item_variants AS iv ON ov.shop_id = iv.shop_id AND iv.item_id = ov.item_id AND iv.id = ov.variant_id
+                  WHERE ov.shop_id = oi.shop_id AND ov.tab_id = oi.tab_id AND ov.bill_id = oi.bill_id AND ov.item_id = oi.item_id) AS variants
+            ) AS variants
+              FROM order_items AS oi
+              LEFT JOIN items ON items.shop_id = oi.shop_id AND items.id = oi.item_id
+              WHERE oi.shop_id = tab_bills.shop_id AND oi.tab_id = tab_bills.tab_id AND oi.bill_id = tab_bills.id) AS items
+          ) AS items
+          FROM tab_bills
+          WHERE tab_bills.shop_id = tabs.shop_id AND tab_bills.tab_id = tabs.id
+          GROUP BY tab_bills.shop_id, tab_bills.tab_id, tab_bills.id
+          ) as tab_bills
+      ) AS bills,
+      (SELECT array_remove(array_agg(tab_users.email), null)
+       FROM tab_users
+       WHERE tab_users.shop_id = tabs.shop_id AND tab_users.tab_id = tabs.id
+      ) AS verification_list
     FROM tabs
-    LEFT JOIN tab_updates AS u ON tabs.shop_id = u.shop_id AND tabs.id = u.tab_id
-    LEFT JOIN tab_users ON tabs.shop_id = tab_users.shop_id AND tabs.id = tab_users.tab_id
     WHERE tabs.shop_id = @shopId AND tabs.id = @tabId
-    GROUP BY tabs.shop_id, tabs.id, u.*`,
+    GROUP BY tabs.shop_id, tabs.id`,
 		pgx.NamedArgs{
 			"shopId": shopId,
 			"tabId":  tabId,

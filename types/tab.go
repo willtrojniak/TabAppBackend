@@ -48,7 +48,7 @@ type Bill struct {
 	Id        int         `json:"id" db:"id" validate:"required,gte=1"`
 	StartTime time.Time   `json:"start_time" db:"start_time" validate:"required"`
 	IsPaid    bool        `json:"is_paid" db:"is_paid" validate:"required"`
-	Orders    []ItemOrder `json:"orders" db:"orders" validate:"required"`
+	Items     []ItemOrder `json:"items" db:"items" validate:"required"`
 }
 
 /*
