@@ -18,8 +18,7 @@ func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// http.Redirect(w, r, "http://localhost:5173", http.StatusFound);
-	http.Redirect(w, r, "/api/v1/login", http.StatusFound)
+	http.Redirect(w, r, "http://127.0.0.1:5173", http.StatusFound)
 	return
 
 }
