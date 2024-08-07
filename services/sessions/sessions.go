@@ -195,15 +195,16 @@ func (s *Handler) setCSRFHeader(w http.ResponseWriter, session *Session) {
 	w.Header().Set(csrf_header, session.data.CSRFToken)
 }
 
-func (s *Handler) createSessionCookie(w http.ResponseWriter, r *http.Request, sessionId string, expiryTime int) {
+func (s *Handler) createSessionCookie(w http.ResponseWriter, _ *http.Request, sessionId string, expiryTime int) {
 
 	c := &http.Cookie{
 		Name:     session_cookie,
 		Value:    sessionId,
 		MaxAge:   expiryTime,
-		Secure:   r.TLS != nil,
+		Secure:   true,
 		HttpOnly: true,
 		Path:     "/",
+		SameSite: 4,
 	}
 	http.SetCookie(w, c)
 }

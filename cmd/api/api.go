@@ -53,10 +53,7 @@ func (s *APIServer) Run() error {
 	shopHandler.RegisterRoutes(v1)
 
 	router.Handle("/api/v1/", http.StripPrefix("/api/v1", WithMiddleware(
-		CORSMiddleware,
-		CSRCredentialsMiddleware,
-		sessionManager.RequireCSRFHeader,
 		sessionManager.RequireAuth)(v1)))
 
-	return http.ListenAndServe(s.addr, WithMiddleware(RequestLoggerMiddleware)(router))
+	return http.ListenAndServe(s.addr, WithMiddleware(RequestLoggerMiddleware, CORSMiddleware, sessionManager.RequireCSRFHeader)(router))
 }

@@ -65,8 +65,12 @@ func (h *Handler) beginAuthorize(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	redirect := r.URL.Query().Get("redirect")
+	h.logger.Debug("Redirect query param", "value", redirect)
+
 	setCallbackCookie(w, r, "state", state)
 	setCallbackCookie(w, r, "nonce", nonce)
+	setCallbackCookie(w, r, "redirect", redirect)
 	http.Redirect(w, r, h.config.AuthCodeURL(state, oidc.Nonce(nonce)), http.StatusFound)
 
 	return nil

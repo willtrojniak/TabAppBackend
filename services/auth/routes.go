@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -17,8 +18,14 @@ func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
 		h.handleError(w, err)
 		return
 	}
+	redirectCookie, err := r.Cookie("redirect")
+	redirect := ""
+	if err == nil {
+		redirect = redirectCookie.Value
+	}
+	h.logger.Debug("Redirect Value", "redirect", redirect)
 
-	http.Redirect(w, r, "http://127.0.0.1:5173", http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf("http://127.0.0.1:5173%v", redirect), http.StatusFound)
 	return
 
 }

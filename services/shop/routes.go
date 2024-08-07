@@ -22,54 +22,52 @@ const (
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	h.logger.Info("Registering shop routes")
-	subrouter := http.NewServeMux()
-	router.Handle("/shops/", http.StripPrefix("/shops", subrouter))
+	router.HandleFunc("POST /shops", h.handleCreateShop)
+	router.HandleFunc("GET /shops", h.handleGetShops)
 
 	// Payment Methods
 	router.HandleFunc("GET /payment-methods", h.handleGetPaymentMethods)
 
 	// Shops
-	router.HandleFunc("POST /shops", h.handleCreateShop)
-	router.HandleFunc("GET /shops", h.handleGetShops)
-	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}", shopIdParam), h.handleGetShopById)
-	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}", shopIdParam), h.handleUpdateShop)
-	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}", shopIdParam), h.handleDeleteShop)
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}", shopIdParam), h.handleGetShopById)
+	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}", shopIdParam), h.handleUpdateShop)
+	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}", shopIdParam), h.handleDeleteShop)
 
 	// Categories
-	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/categories", shopIdParam), h.handleCreateCategory)
-	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/categories", shopIdParam), h.handleGetCategories)
-	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/categories/{%v}", shopIdParam, categoryIdParam), h.handleUpdateCategory)
-	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/categories/{%v}", shopIdParam, categoryIdParam), h.handleDeleteCategory)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/categories", shopIdParam), h.handleCreateCategory)
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/categories", shopIdParam), h.handleGetCategories)
+	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/categories/{%v}", shopIdParam, categoryIdParam), h.handleUpdateCategory)
+	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}/categories/{%v}", shopIdParam, categoryIdParam), h.handleDeleteCategory)
 
 	// Items
-	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/items", shopIdParam), h.handleCreateItem)
-	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/items", shopIdParam), h.handleGetItems)
-	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleUpdateItem)
-	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleGetItem)
-	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleDeleteItem)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/items", shopIdParam), h.handleCreateItem)
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/items", shopIdParam), h.handleGetItems)
+	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleUpdateItem)
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleGetItem)
+	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}/items/{%v}", shopIdParam, itemIdParam), h.handleDeleteItem)
 
 	// Item Variants
-	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/items/{%v}/variants", shopIdParam, itemIdParam), h.handleCreateItemVariant)
-	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/items/{%v}/variants/{%v}", shopIdParam, itemIdParam, itemVariantIdParam), h.handleUpdateItemVariant)
-	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/items/{%v}/variants/{%v}", shopIdParam, itemIdParam, itemVariantIdParam), h.handleDeleteItemVariant)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/items/{%v}/variants", shopIdParam, itemIdParam), h.handleCreateItemVariant)
+	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/items/{%v}/variants/{%v}", shopIdParam, itemIdParam, itemVariantIdParam), h.handleUpdateItemVariant)
+	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}/items/{%v}/variants/{%v}", shopIdParam, itemIdParam, itemVariantIdParam), h.handleDeleteItemVariant)
 
 	// Item Substitution Groups
-	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/substitutions", shopIdParam), h.handleCreateSubstitutionGroup)
-	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/substitutions", shopIdParam), h.handleGetSubstitutionGroups)
-	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/substitutions/{%v}", shopIdParam, substitutionGroupIdParam), h.handleUpdateSubstitutionGroup)
-	subrouter.HandleFunc(fmt.Sprintf("DELETE /{%v}/substitutions/{%v}", shopIdParam, substitutionGroupIdParam), h.handleDeleteSubstitutionGroup)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/substitutions", shopIdParam), h.handleCreateSubstitutionGroup)
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/substitutions", shopIdParam), h.handleGetSubstitutionGroups)
+	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/substitutions/{%v}", shopIdParam, substitutionGroupIdParam), h.handleUpdateSubstitutionGroup)
+	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}/substitutions/{%v}", shopIdParam, substitutionGroupIdParam), h.handleDeleteSubstitutionGroup)
 
 	// Tabs
-	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs", shopIdParam), h.handleCreateTab)
-	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/tabs", shopIdParam), h.handleGetTabs)
-	subrouter.HandleFunc(fmt.Sprintf("GET /{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.handleGetTabById)
-	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.handleUpdateTab)
-	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs/{%v}/approve", shopIdParam, tabIdParam), h.handleApproveTab)
-	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs/{%v}/bills/{%v}/close", shopIdParam, tabIdParam, billIdParam), h.handleCloseTabBill)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/tabs", shopIdParam), h.handleCreateTab)
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/tabs", shopIdParam), h.handleGetTabs)
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.handleGetTabById)
+	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.handleUpdateTab)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/tabs/{%v}/approve", shopIdParam, tabIdParam), h.handleApproveTab)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/tabs/{%v}/bills/{%v}/close", shopIdParam, tabIdParam, billIdParam), h.handleCloseTabBill)
 
 	// Orders
-	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs/{%v}/add-order", shopIdParam, tabIdParam), h.handleAddOrderToTab)
-	subrouter.HandleFunc(fmt.Sprintf("POST /{%v}/tabs/{%v}/remove-order", shopIdParam, tabIdParam), h.handleRemoveOrderFromTab)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/tabs/{%v}/add-order", shopIdParam, tabIdParam), h.handleAddOrderToTab)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/tabs/{%v}/remove-order", shopIdParam, tabIdParam), h.handleRemoveOrderFromTab)
 
 }
 
