@@ -92,7 +92,7 @@ func (s *PgxStore) GetItem(ctx context.Context, shopId int, itemId int) (types.I
       ) AS addons,
       (SELECT COALESCE(json_agg(substitution_groups ORDER BY substitution_groups.index) FILTER (WHERE substitution_groups.id IS NOT NULL), '[]')
         FROM (SELECT items_to_item_substitution_groups.item_id, items_to_item_substitution_groups.shop_id, items_to_item_substitution_groups.index, item_substitution_groups.name, items_to_item_substitution_groups.substitution_group_id AS id,
-              COALESCE(json_agg(items ORDER BY item_substitution_groups_to_items.index) FILTER (WHERE items.id IS NOT NULL), '[]') AS substitutions
+              COALESCE(json_agg(subs ORDER BY item_substitution_groups_to_items.index) FILTER (WHERE subs.id IS NOT NULL), '[]') AS substitutions
               FROM items_to_item_substitution_groups
               LEFT JOIN item_substitution_groups ON 
                 item_substitution_groups.id = items_to_item_substitution_groups.substitution_group_id
@@ -100,9 +100,9 @@ func (s *PgxStore) GetItem(ctx context.Context, shopId int, itemId int) (types.I
               LEFT JOIN item_substitution_groups_to_items ON
                 items_to_item_substitution_groups.substitution_group_id = item_substitution_groups_to_items.substitution_group_id
                 AND items_to_item_substitution_groups.shop_id = item_substitution_groups_to_items.shop_id
-              LEFT JOIN items ON
-                item_substitution_groups_to_items.item_id = items.id
-                AND item_substitution_groups_to_items.shop_id = items.shop_id
+              LEFT JOIN items AS subs ON
+                item_substitution_groups_to_items.item_id = subs.id
+                AND item_substitution_groups_to_items.shop_id = subs.shop_id
               WHERE items_to_item_substitution_groups.shop_id = items.shop_id AND items_to_item_substitution_groups.item_id = items.id
               GROUP BY items_to_item_substitution_groups.substitution_group_id, items_to_item_substitution_groups.item_id, items_to_item_substitution_groups.shop_id, items_to_item_substitution_groups.index, item_substitution_groups.name
              ) AS substitution_groups

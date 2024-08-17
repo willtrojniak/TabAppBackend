@@ -44,7 +44,7 @@ func (s *PgxStore) CreateCategory(ctx context.Context, data *types.CategoryCreat
 func (s *PgxStore) GetCategories(ctx context.Context, shopId int) ([]types.Category, error) {
 
 	rows, err := s.pool.Query(ctx,
-		`SELECT item_categories.*, array_remove(array_agg(items.id), null) AS item_ids FROM item_categories
+		`SELECT item_categories.*, array_remove(array_agg(items.id ORDER BY items_to_categories.index), null) AS item_ids FROM item_categories
     LEFT JOIN items_to_categories ON item_categories.shop_id = items_to_categories.shop_id AND item_categories.id = items_to_categories.item_category_id
     LEFT JOIN items ON items_to_categories.shop_id = items.shop_id AND items_to_categories.item_id = items.id
     WHERE item_categories.shop_id = @shopId
