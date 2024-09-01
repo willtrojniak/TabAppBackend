@@ -112,9 +112,10 @@ type TabCreate struct {
 
 type TabOverview struct {
 	TabCreate
-	Id             int      `json:"id" db:"id" validate:"required,gte=1"`
-	PendingUpdates *TabBase `json:"pending_updates" db:"pending_updates"`
-	Status         string   `json:"status" db:"status"`
+	Id               int      `json:"id" db:"id" validate:"required,gte=1"`
+	PendingUpdates   *TabBase `json:"pending_updates" db:"pending_updates"`
+	Status           string   `json:"status" db:"status"`
+	IsPendingBalance bool     `json:"is_pending_balance" db:"is_pending_balance"`
 }
 
 type Tab struct {

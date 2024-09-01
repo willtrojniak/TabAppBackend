@@ -257,7 +257,16 @@ func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId int, tabId int, dat
 
 func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.TabOverview, error) {
 	rows, err := s.pool.Query(ctx, `
-    SELECT tabs.*, to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates, array_remove(array_agg(tab_users.email), null) as verification_list
+    SELECT 
+      tabs.*, 
+      to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates,
+      array_remove(array_agg(tab_users.email), null) as verification_list,
+      EXISTS(
+        SELECT tab_bills.id
+        FROM tab_bills
+        WHERE tab_bills.shop_id = tabs.shop_id AND tab_bills.tab_id = tabs.id AND tab_bills.is_paid = FALSE
+        LIMIT 1
+      ) as is_pending_balance
     FROM tabs
     LEFT JOIN tab_updates AS u ON tabs.shop_id = u.shop_id AND tabs.id = u.tab_id
     LEFT JOIN tab_users ON tabs.shop_id = tab_users.shop_id AND tabs.id = tab_users.tab_id
@@ -281,6 +290,12 @@ func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.TabOverview
 func (s *PgxStore) GetTabById(ctx context.Context, shopId int, tabId int) (types.Tab, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT tabs.*, 
+      EXISTS(
+        SELECT tab_bills.id
+        FROM tab_bills
+        WHERE tab_bills.shop_id = tabs.shop_id AND tab_bills.tab_id = tabs.id AND tab_bills.is_paid = FALSE
+        LIMIT 1
+      ) as is_pending_balance,
       (SELECT to_jsonb(tab_updates.*) as pending_updates
        FROM tab_updates
        WHERE tab_updates.shop_id = tabs.shop_id AND tab_updates.tab_id = tabs.id
