@@ -88,7 +88,7 @@ type TabBase struct {
 	PaymentMethod       string  `json:"payment_method" db:"payment_method" validate:"required,oneof='in person' 'chartstring'"`
 	Organization        string  `json:"organization" db:"organization" validate:"required,min=3,max=64"`
 	DisplayName         string  `json:"display_name" db:"display_name" validate:"required,min=3,max=64"`
-	StartDate           Date    `json:"start_date" db:"start_date" validate:"required,future"`
+	StartDate           Date    `json:"start_date" db:"start_date" validate:"required"`
 	EndDate             Date    `json:"end_date" db:"end_date" validate:"required"`
 	DailyStartTime      Time    `json:"daily_start_time" db:"daily_start_time" validate:"required"`
 	DailyEndTime        Time    `json:"daily_end_time" db:"daily_end_time" validate:"required"`
