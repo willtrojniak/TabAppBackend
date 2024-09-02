@@ -11,7 +11,6 @@ import (
 )
 
 type config struct {
-	SESSION_SECRET              string
 	OAUTH2_GOOGLE_CLIENT_ID     string
 	OAUTH2_GOOGLE_CLIENT_SECRET string
 	POSTGRES_USER               string

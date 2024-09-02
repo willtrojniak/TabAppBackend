@@ -4,6 +4,9 @@ services:
       context: .
       args:
         ENV: ${ENV:-dev}
+    depends_on:
+      - db
+      - redis
     restart: always
     ports:
       - "3000:3000"
@@ -41,6 +44,8 @@ services:
     ports:
       - "8080:8080"
   swagger:
+    profiles:
+      - swagger 
     image: swaggerapi/swagger-ui:latest
     ports:
       - "4200:8080"
