@@ -144,16 +144,19 @@ func (s *Handler) RequireCSRFHeader(next http.Handler) http.HandlerFunc {
 			}
 		}
 
+		session, sessionValid := s.GetSession(r)
+		// Set the CSRF header in the response
+		if sessionValid == nil {
+			s.setCSRFHeader(w, session)
+		}
+
 		if !safeMethod {
 			// Check for an active session
-			session, err := s.GetSession(r)
-			if err != nil {
+			if sessionValid != nil {
 				s.handleError(w, services.NewServiceError(errors.New("No CSRF token to match"), http.StatusForbidden, nil))
-				s.handleError(w, services.NewInternalServiceError(err))
+				s.handleError(w, services.NewInternalServiceError(sessionValid))
 				return
 			}
-			// Set the CSRF header in the response
-			s.setCSRFHeader(w, session)
 
 			if requestToken != session.data.CSRFToken {
 				s.logger.Warn("CSRF Tokens did not match", "incoming-token", requestToken, "stored-token", session.data.CSRFToken)
