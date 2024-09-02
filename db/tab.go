@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateTab(ctx context.Context, data *types.TabCreate) error {
+func (s *PgxStore) CreateTab(ctx context.Context, data *types.TabCreate, status types.TabStatus) error {
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -22,10 +22,10 @@ func (s *PgxStore) CreateTab(ctx context.Context, data *types.TabCreate) error {
     INSERT INTO tabs 
       (shop_id, owner_id, payment_method, organization, display_name,
       start_date, end_date, daily_start_time, daily_end_time, active_days_of_wk,
-      dollar_limit_per_order, verification_method, payment_details, billing_interval_days) 
+      dollar_limit_per_order, verification_method, payment_details, billing_interval_days, status) 
     VALUES (@shopId, @ownerId, @paymentMethod, @organization, @displayName,
             @startDate, @endDate, @dailyStartTime, @dailyEndTime, @activeDaysOfWk,
-            @dollarLimitPerOrder, @verificationMethod, @paymentDetails, @billingIntervalDays)
+            @dollarLimitPerOrder, @verificationMethod, @paymentDetails, @billingIntervalDays, @status)
     RETURNING id`,
 		pgx.NamedArgs{
 			"shopId":              data.ShopId,
@@ -42,6 +42,7 @@ func (s *PgxStore) CreateTab(ctx context.Context, data *types.TabCreate) error {
 			"verificationMethod":  data.VerificationMethod,
 			"paymentDetails":      data.PaymentDetails,
 			"billingIntervalDays": data.BillingIntervalDays,
+			"status":              status,
 		})
 
 	var tabId int
@@ -448,7 +449,7 @@ func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tab
 		if errors.Is(err, pgx.ErrNoRows) {
 			endDate := tab.EndDate
 			if tab.StartDate.AddDays(tab.BillingIntervalDays).Before(endDate.Date) {
-				endDate = types.Date{Date: tab.StartDate.AddDays(tab.BillingIntervalDays)}
+				endDate = types.Date{Date: tab.StartDate.AddDays(tab.BillingIntervalDays - 1)}
 			}
 
 			id, err := s.insertBill(ctx, tx, shopId, tabId, tab.StartDate, endDate)
@@ -469,8 +470,8 @@ func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tab
 	}
 
 	endDate := tab.EndDate
-	if bill.EndDate.AddDays(tab.BillingIntervalDays).Before(endDate.Date) {
-		endDate = types.Date{Date: bill.EndDate.AddDays(tab.BillingIntervalDays)}
+	if bill.EndDate.AddDays(tab.BillingIntervalDays - 1).Before(endDate.Date) {
+		endDate = types.Date{Date: bill.EndDate.AddDays(tab.BillingIntervalDays - 1)}
 	}
 
 	id, err := s.insertBill(ctx, tx, shopId, tabId, bill.EndDate, endDate)

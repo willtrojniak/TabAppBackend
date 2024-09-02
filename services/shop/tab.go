@@ -11,13 +11,33 @@ import (
 )
 
 func (h *Handler) CreateTab(ctx context.Context, session *sessions.Session, data *types.TabCreate) error {
-
-	err := types.ValidateData(data, h.logger)
+	// Check that the client is authenticated
+	userId, err := session.GetUserId()
 	if err != nil {
 		return err
 	}
 
-	err = h.store.CreateTab(ctx, data)
+	// Request data validation
+	err = types.ValidateData(data, h.logger)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Wrap in transaction
+
+	// Get the target shop
+	shop, err := h.store.GetShopById(ctx, data.ShopId)
+	if err != nil {
+		return err
+	}
+
+	// By default the tab status is pending, unless it is created by the shop owner
+	status := types.TAB_STATUS_PENDING
+	if shop.OwnerId == userId {
+		status = types.TAB_STATUS_CONFIRMED
+	}
+
+	err = h.store.CreateTab(ctx, data, status)
 	if err != nil {
 		return err
 	}
