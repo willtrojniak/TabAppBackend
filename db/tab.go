@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/types"
@@ -180,14 +181,17 @@ func (s *PgxStore) ApproveTab(ctx context.Context, shopId int, tabId int) error 
 }
 
 func (s *PgxStore) MarkTabBillPaid(ctx context.Context, shopId int, tabId int, billId int) error {
+	endDate := types.DateOf(time.Now())
+	println(endDate.String())
 	result, err := s.pool.Exec(ctx, `
     UPDATE tab_bills 
-    SET is_paid = true 
+    SET (is_paid, end_date) = (true, @endDate)
     WHERE shop_id = @shopId AND tab_id = @tabId AND id = @billId 
     `, pgx.NamedArgs{
-		"shopId": shopId,
-		"tabId":  tabId,
-		"billId": billId,
+		"shopId":  shopId,
+		"tabId":   tabId,
+		"billId":  billId,
+		"endDate": endDate,
 	})
 	if err != nil {
 		return handlePgxError(err)
@@ -399,42 +403,82 @@ func (s *PgxStore) setTabUsers(ctx context.Context, tx pgx.Tx, shopId int, tabId
 	return nil
 }
 
-func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tabId int) (int, error) {
-	row := tx.QueryRow(ctx, `
-    SELECT b.id
-    FROM tab_bills b
-    LEFT JOIN tabs ON b.shop_id = tabs.shop_id AND b.tab_id = tabs.id
-    WHERE b.shop_id = @shopId AND b.tab_id = @tabId
-    AND b.is_paid = false AND b.start_time <= NOW() AND b.start_time + INTERVAL '1' day * tabs.billing_interval_days >= NOW() 
-    ORDER BY start_time DESC
-    `,
-		pgx.NamedArgs{
-			"shopId": shopId,
-			"tabId":  tabId,
-		})
+func (s *PgxStore) insertBill(ctx context.Context, tx pgx.Tx, shopId int, tabId int, startDate types.Date, endDate types.Date) (int, error) {
 	var billId int
-	err := row.Scan(&billId)
-	if err == nil {
-		return billId, nil
-	}
+	println("start ", startDate.String(), "end", endDate.String())
 
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return 0, handlePgxError(err)
-	}
-
-	row = tx.QueryRow(ctx, `
+	row := tx.QueryRow(ctx, `
     INSERT INTO tab_bills 
-    (shop_id, tab_id, start_time) VALUES (@shopId, @tabId, NOW()) RETURNING id
+    (shop_id, tab_id, start_date, end_date) VALUES (@shopId, @tabId, @startDate, @endDate) RETURNING id
     `, pgx.NamedArgs{
-		"shopId": shopId,
-		"tabId":  tabId,
+		"shopId":    shopId,
+		"tabId":     tabId,
+		"startDate": startDate,
+		"endDate":   endDate,
 	})
-	err = row.Scan(&billId)
+	err := row.Scan(&billId)
 	if err != nil {
 		return 0, handlePgxError(err)
 	}
 
 	return billId, nil
+}
+
+func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tabId int) (int, error) {
+	// TODO: Implement and change to get tab overview by id
+	tab, err := s.GetTabById(ctx, shopId, tabId)
+	if err != nil {
+		return 0, err
+	}
+
+	rows, _ := tx.Query(ctx, `
+    SELECT b.id, b.start_date, b.end_date, b.is_paid
+    FROM tab_bills b
+    LEFT JOIN tabs ON b.shop_id = tabs.shop_id AND b.tab_id = tabs.id
+    WHERE b.shop_id = @shopId AND b.tab_id = @tabId
+    ORDER BY is_paid, end_date DESC
+    `,
+		pgx.NamedArgs{
+			"shopId": shopId,
+			"tabId":  tabId,
+		})
+
+	bill, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.BillOverview])
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			endDate := tab.EndDate
+			if tab.StartDate.AddDays(tab.BillingIntervalDays).Before(endDate.Date) {
+				endDate = types.Date{Date: tab.StartDate.AddDays(tab.BillingIntervalDays)}
+			}
+
+			id, err := s.insertBill(ctx, tx, shopId, tabId, tab.StartDate, endDate)
+			if err != nil {
+				return 0, handlePgxError(err)
+			}
+			return id, nil
+		}
+
+		return 0, handlePgxError(err)
+	}
+
+	now := time.Now()
+	today := types.DateOf(now)
+
+	if !bill.StartDate.After(today.Date) && !bill.EndDate.Before(today.Date) && !bill.IsPaid {
+		return bill.Id, nil
+	}
+
+	endDate := tab.EndDate
+	if bill.EndDate.AddDays(tab.BillingIntervalDays).Before(endDate.Date) {
+		endDate = types.Date{Date: bill.EndDate.AddDays(tab.BillingIntervalDays)}
+	}
+
+	id, err := s.insertBill(ctx, tx, shopId, tabId, bill.EndDate, endDate)
+	if err != nil {
+		return 0, handlePgxError(err)
+	}
+	return id, nil
+
 }
 
 func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, data *types.BillOrderCreate) error {

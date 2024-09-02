@@ -44,11 +44,16 @@ type BillOrderCreate struct {
 	Items []ItemOrderCreate `json:"items" db:"items" validate:"required,dive"`
 }
 
+type BillOverview struct {
+	Id        int  `json:"id" db:"id" validate:"required,gte=1"`
+	StartDate Date `json:"start_date" db:"start_date" validate:"required"`
+	EndDate   Date `json:"end_date" db:"end_date" validate:"required"`
+	IsPaid    bool `json:"is_paid" db:"is_paid" validate:"required"`
+}
+
 type Bill struct {
-	Id        int         `json:"id" db:"id" validate:"required,gte=1"`
-	StartTime time.Time   `json:"start_time" db:"start_time" validate:"required"`
-	IsPaid    bool        `json:"is_paid" db:"is_paid" validate:"required"`
-	Items     []ItemOrder `json:"items" db:"items" validate:"required"`
+	BillOverview
+	Items []ItemOrder `json:"items" db:"items" validate:"required"`
 }
 
 /*
