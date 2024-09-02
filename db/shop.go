@@ -62,6 +62,28 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 
 }
 
+func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]types.Shop, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
+    LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
+    WHERE shops.owner_id = @userId
+    GROUP BY shops.id
+    ORDER BY shops.name`,
+		pgx.NamedArgs{
+			"userId": userId,
+		})
+	if err != nil {
+		return nil, handlePgxError(err)
+	}
+
+	shops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.Shop])
+	if err != nil {
+		return nil, handlePgxError(err)
+	}
+	return shops, nil
+
+}
+
 func (s *PgxStore) GetShopById(ctx context.Context, shopId int) (types.Shop, error) {
 	row, err := s.pool.Query(ctx,
 		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops

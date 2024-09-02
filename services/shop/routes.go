@@ -103,6 +103,23 @@ func (h *Handler) handleCreateShop(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetShops(w http.ResponseWriter, r *http.Request) {
+	// Query params
+	userIdKey := "userId"
+
+	searchParams := r.URL.Query()
+	if searchParams.Has(userIdKey) {
+		userId := searchParams.Get(userIdKey)
+		shops, err := h.GetShopsByUserId(r.Context(), userId)
+		if err != nil {
+			h.handleError(w, err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(shops)
+		return
+	}
+
 	// TODO: Dynamically change limit and offset
 	shops, err := h.GetShops(r.Context(), 10, 0)
 	if err != nil {

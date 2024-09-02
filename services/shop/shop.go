@@ -60,7 +60,14 @@ func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]types.
 	}
 
 	return shops, nil
+}
 
+func (h *Handler) GetShopsByUserId(ctx context.Context, userId string) ([]types.Shop, error) {
+	shops, err := h.store.GetShopsByUserId(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+	return shops, err
 }
 
 func (h *Handler) GetShopById(ctx context.Context, shopId int) (types.Shop, error) {
