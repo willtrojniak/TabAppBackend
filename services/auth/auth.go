@@ -38,7 +38,7 @@ func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.
 		ClientID:     env.Envs.OAUTH2_GOOGLE_CLIENT_ID,
 		ClientSecret: env.Envs.OAUTH2_GOOGLE_CLIENT_SECRET,
 		Endpoint:     provider.Endpoint(),
-		RedirectURL:  "http://127.0.0.1:3000/auth/google/callback",
+		RedirectURL:  fmt.Sprintf("%v/auth/google/callback", env.Envs.BASE_URI),
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 	}
 

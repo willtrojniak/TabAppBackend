@@ -3,6 +3,8 @@ package auth
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/WilliamTrojniak/TabAppBackend/env"
 )
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
@@ -23,9 +25,8 @@ func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		redirect = redirectCookie.Value
 	}
-	h.logger.Debug("Redirect Value", "redirect", redirect)
 
-	http.Redirect(w, r, fmt.Sprintf("http://127.0.0.1:5173%v", redirect), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf("%v/%v", env.Envs.UI_URI, redirect), http.StatusFound)
 	return
 
 }

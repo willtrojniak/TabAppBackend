@@ -11,6 +11,8 @@ import (
 )
 
 type config struct {
+	BASE_URI                    string
+	UI_URI                      string
 	OAUTH2_GOOGLE_CLIENT_ID     string
 	OAUTH2_GOOGLE_CLIENT_SECRET string
 	POSTGRES_USER               string
