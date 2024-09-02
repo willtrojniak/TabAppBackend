@@ -135,21 +135,6 @@ func (s *Handler) ClearSession(w http.ResponseWriter, r *http.Request) error {
 func (s *Handler) RequireCSRFHeader(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		// Check for an active session
-		session, err := s.GetSession(r)
-		if err != nil {
-
-			// If there is no session, create an unauthenticated session
-			session, err = s.CreateSession(w, r, "") // Empty string for no user id --> unauthenticated
-			if err != nil {
-				s.logger.Error("Failed to create anonymous session", "error", err)
-				s.handleError(w, services.NewInternalServiceError(err))
-				return
-			}
-		}
-		// Set the CSRF header in the response
-		s.setCSRFHeader(w, session)
-
 		requestToken := r.Header.Get(csrf_header)
 		safeMethod := false
 		for _, val := range safe_methods {
@@ -159,13 +144,26 @@ func (s *Handler) RequireCSRFHeader(next http.Handler) http.HandlerFunc {
 			}
 		}
 
-		if !safeMethod && requestToken != session.data.CSRFToken {
-			s.logger.Warn("CSRF Tokens did not match", "incoming-token", requestToken, "stored-token", session.data.CSRFToken)
-			s.handleError(w, services.NewServiceError(errors.New("CSRF Tokens did not match"), http.StatusForbidden, nil))
-			return
-		}
+		if !safeMethod {
+			// Check for an active session
+			session, err := s.GetSession(r)
+			if err != nil {
+				s.handleError(w, services.NewServiceError(errors.New("No CSRF token to match"), http.StatusForbidden, nil))
+				s.handleError(w, services.NewInternalServiceError(err))
+				return
+			}
+			// Set the CSRF header in the response
+			s.setCSRFHeader(w, session)
 
+			if requestToken != session.data.CSRFToken {
+				s.logger.Warn("CSRF Tokens did not match", "incoming-token", requestToken, "stored-token", session.data.CSRFToken)
+				s.handleError(w, services.NewServiceError(errors.New("CSRF Tokens did not match"), http.StatusForbidden, nil))
+				return
+			}
+
+		}
 		next.ServeHTTP(w, r)
+
 	}
 }
 
