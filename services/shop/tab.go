@@ -119,6 +119,29 @@ func (h *Handler) ApproveTab(ctx context.Context, session *sessions.Session, sho
 	return nil
 }
 
+func (h *Handler) CloseTab(ctx context.Context, session *sessions.Session, shopId int, tabId int) error {
+	err := h.AuthorizeModifyShop(ctx, session, shopId)
+	if err != nil {
+		return err
+	}
+
+	tab, err := h.store.GetTabById(ctx, shopId, tabId)
+	if err != nil {
+		return err
+	}
+	if !(tab.Status == types.TAB_STATUS_PENDING.String() || tab.Status == types.TAB_STATUS_CONFIRMED.String()) {
+		return services.NewDataConflictServiceError(nil)
+	}
+
+	err = h.store.CloseTab(ctx, shopId, tabId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
 func (h *Handler) MarkTabBillPaid(ctx context.Context, session *sessions.Session, shopId int, tabId int, billId int) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {

@@ -181,6 +181,48 @@ func (s *PgxStore) ApproveTab(ctx context.Context, shopId int, tabId int) error 
 
 }
 
+func (s *PgxStore) CloseTab(ctx context.Context, shopId int, tabId int) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+	defer tx.Rollback(ctx)
+
+	result, err := tx.Exec(ctx, `
+    UPDATE tabs SET
+      status = @status
+    WHERE tabs.id = @tabId AND tabs.shop_id = @shopId 
+    `, pgx.NamedArgs{
+		"shopId": shopId,
+		"tabId":  tabId,
+		"status": types.TAB_STATUS_CLOSED,
+	})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return services.NewNotFoundServiceError(nil)
+	}
+
+	_, err = tx.Exec(ctx, `
+    DELETE FROM tab_updates
+    WHERE shop_id = @shopId AND tab_id = @tabId`,
+		pgx.NamedArgs{
+			"shopId": shopId,
+			"tabId":  tabId,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+	return nil
+}
+
 func (s *PgxStore) MarkTabBillPaid(ctx context.Context, shopId int, tabId int, billId int) error {
 	endDate := types.DateOf(time.Now())
 	println(endDate.String())

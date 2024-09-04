@@ -63,6 +63,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.handleGetTabById)
 	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.handleUpdateTab)
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/tabs/{%v}/approve", shopIdParam, tabIdParam), h.handleApproveTab)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/tabs/{%v}/close", shopIdParam, tabIdParam), h.handleCloseTab)
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/tabs/{%v}/bills/{%v}/close", shopIdParam, tabIdParam, billIdParam), h.handleCloseTabBill)
 
 	// Orders
@@ -790,6 +791,32 @@ func (h *Handler) handleApproveTab(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.ApproveTab(r.Context(), session, shopId, tabId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleCloseTab(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	tabId, err := strconv.Atoi(r.PathValue(tabIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid tab id"))
+		return
+	}
+
+	err = h.CloseTab(r.Context(), session, shopId, tabId)
 	if err != nil {
 		h.handleError(w, err)
 		return
