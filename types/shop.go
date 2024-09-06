@@ -21,3 +21,17 @@ type Shop struct {
 	Id uint `json:"id" db:"id" validate:"required,gte=1"`
 	ShopCreate
 }
+
+type LocationUpdate struct {
+	Name string `json:"name" db:"name" validate:"required,min=1,max=64"`
+}
+
+type LocationCreate struct {
+	ShopId int `json:"shop_id" db:"shop_id" validate:"required,gte=1"`
+	LocationUpdate
+}
+
+type Location struct {
+	Id uint `json:"id" db:"id" validate:"required,gte=1"`
+	ShopCreate
+}

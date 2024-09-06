@@ -12,6 +12,7 @@ import (
 
 const (
 	shopIdParam              = "shopId"
+	locationIdParam          = "locationId"
 	categoryIdParam          = "categoryId"
 	itemIdParam              = "itemId"
 	itemVariantIdParam       = "itemVariantId"
@@ -32,6 +33,11 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}", shopIdParam), h.handleGetShopById)
 	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}", shopIdParam), h.handleUpdateShop)
 	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}", shopIdParam), h.handleDeleteShop)
+
+	// Locations
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/locations", shopIdParam), h.handleCreateLocation)
+	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/locations/{%v}", shopIdParam, locationIdParam), h.handleUpdateLocation)
+	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}/categories/{%v}", shopIdParam, locationIdParam), h.handleDeleteLocation)
 
 	// Categories
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/categories", shopIdParam), h.handleCreateCategory)
@@ -204,6 +210,93 @@ func (h *Handler) handleGetPaymentMethods(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(methods)
+}
+
+func (h *Handler) handleCreateLocation(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	data := types.LocationCreate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	data.ShopId = shopId
+
+	err = h.CreateLocation(r.Context(), session, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleUpdateLocation(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	locationId, err := strconv.Atoi(r.PathValue(locationIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid location id"))
+		return
+	}
+
+	data := types.LocationUpdate{}
+	err = types.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.UpdateLocation(r.Context(), session, shopId, locationId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleDeleteLocation(w http.ResponseWriter, r *http.Request) {
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
+		return
+	}
+
+	locationId, err := strconv.Atoi(r.PathValue(locationIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid location id"))
+		return
+	}
+
+	err = h.DeleteLocation(r.Context(), session, shopId, locationId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
 }
 
 func (h *Handler) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
