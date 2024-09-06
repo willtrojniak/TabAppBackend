@@ -53,7 +53,7 @@ func (h *Handler) CreateShop(ctx context.Context, session *sessions.Session, dat
 	return nil
 }
 
-func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]types.Shop, error) {
+func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]types.ShopOverview, error) {
 	shops, err := h.store.GetShops(ctx, limit, offset)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]types.
 	return shops, nil
 }
 
-func (h *Handler) GetShopsByUserId(ctx context.Context, userId string) ([]types.Shop, error) {
+func (h *Handler) GetShopsByUserId(ctx context.Context, userId string) ([]types.ShopOverview, error) {
 	shops, err := h.store.GetShopsByUserId(ctx, userId)
 	if err != nil {
 		return nil, err

@@ -17,9 +17,14 @@ type ShopCreate struct {
 	ShopUpdate
 }
 
-type Shop struct {
+type ShopOverview struct {
 	Id uint `json:"id" db:"id" validate:"required,gte=1"`
 	ShopCreate
+}
+
+type Shop struct {
+	ShopOverview
+	Locations []Location `json:"locations" db:"locations"`
 }
 
 type LocationUpdate struct {
@@ -33,5 +38,5 @@ type LocationCreate struct {
 
 type Location struct {
 	Id uint `json:"id" db:"id" validate:"required,gte=1"`
-	ShopCreate
+	LocationUpdate
 }

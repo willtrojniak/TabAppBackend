@@ -39,7 +39,7 @@ func (s *PgxStore) CreateShop(ctx context.Context, data *types.ShopCreate) error
 	return nil
 }
 
-func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types.Shop, error) {
+func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types.ShopOverview, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
@@ -54,7 +54,7 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 		return nil, handlePgxError(err)
 	}
 
-	shops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.Shop])
+	shops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.ShopOverview])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}
@@ -62,7 +62,7 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 
 }
 
-func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]types.Shop, error) {
+func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]types.ShopOverview, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
@@ -76,7 +76,7 @@ func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]types
 		return nil, handlePgxError(err)
 	}
 
-	shops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.Shop])
+	shops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.ShopOverview])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}
@@ -86,7 +86,13 @@ func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]types
 
 func (s *PgxStore) GetShopById(ctx context.Context, shopId int) (types.Shop, error) {
 	row, err := s.pool.Query(ctx,
-		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
+		`SELECT shops.*, 
+      array_remove(array_agg(payment_methods.method), NULL) as payment_methods,
+      (SELECT COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
+       FROM locations
+       WHERE locations.shop_id = shops.id
+      ) AS locations
+    FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
     WHERE shops.id = @shopId
     GROUP BY shops.id`,
