@@ -37,7 +37,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	// Locations
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/locations", shopIdParam), h.handleCreateLocation)
 	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/locations/{%v}", shopIdParam, locationIdParam), h.handleUpdateLocation)
-	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}/categories/{%v}", shopIdParam, locationIdParam), h.handleDeleteLocation)
+	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}/locations/{%v}", shopIdParam, locationIdParam), h.handleDeleteLocation)
 
 	// Categories
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/categories", shopIdParam), h.handleCreateCategory)
