@@ -78,8 +78,12 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shop
 			return err
 		}
 	} else if tab.Status == types.TAB_STATUS_CONFIRMED.String() {
+		tabLocationIds := make([]uint, 0)
+		for _, location := range tab.Locations {
+			tabLocationIds = append(tabLocationIds, location.Id)
+		}
 		// Here it must be the case that the user is the tab owner, so only request an update so long as the tab is in the confirmed state
-		if !reflect.DeepEqual(tab.TabBase, data.TabBase) {
+		if !reflect.DeepEqual(tab.TabBase, data.TabBase) || !reflect.DeepEqual(tabLocationIds, data.LocationIds) {
 			err = h.store.SetTabUpdates(ctx, shopId, tabId, data)
 		} else {
 			err = h.store.SetTabUsers(ctx, shopId, tabId, data.VerificationList)

@@ -110,6 +110,11 @@ func (s *PgxStore) UpdateTab(ctx context.Context, shopId int, tabId int, data *t
 		return err
 	}
 
+	err = s.setTabLocations(ctx, tx, shopId, tabId, data.LocationIds)
+	if err != nil {
+		return err
+	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -170,6 +175,47 @@ func (s *PgxStore) ApproveTab(ctx context.Context, shopId int, tabId int) error 
 	_, err = tx.Exec(ctx, `
     DELETE FROM tab_updates
     WHERE shop_id = @shopId AND tab_id = @tabId`,
+		pgx.NamedArgs{
+			"shopId": shopId,
+			"tabId":  tabId,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	// Copy over new locations
+	// 1. Delete old locations
+	_, err = tx.Exec(ctx, `
+    DELETE FROM tab_locations
+    WHERE shop_id = @shopId AND tab_id = @tabId
+  `,
+		pgx.NamedArgs{
+			"shopId": shopId,
+			"tabId":  tabId,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	// 2. Add new locations
+	_, err = tx.Exec(ctx, `
+    INSERT INTO tab_locations (SELECT * FROM tab_update_locations AS u
+    WHERE u.shop_id = @shopId AND u.tab_id = @tabId)
+    ON CONFLICT DO NOTHING
+  `,
+		pgx.NamedArgs{
+			"shopId": shopId,
+			"tabId":  tabId,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	// 3. Delete new locations
+	_, err = tx.Exec(ctx, `
+    DELETE FROM tab_update_locations
+    WHERE shop_id = @shopId AND tab_id = @tabId
+  `,
 		pgx.NamedArgs{
 			"shopId": shopId,
 			"tabId":  tabId,
@@ -298,6 +344,11 @@ func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId int, tabId int, dat
 		return err
 	}
 
+	err = s.SetTabUpdateLocations(ctx, tx, shopId, tabId, data.LocationIds)
+	if err != nil {
+		return err
+	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -311,7 +362,17 @@ func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.TabOverview
 	rows, err := s.pool.Query(ctx, `
     SELECT 
       tabs.*, 
-      to_jsonb(u) - 'shop_id' - 'tab_id' as pending_updates,
+      (SELECT to_jsonb(tab_updates) as pending_updates
+       FROM (SELECT tab_updates.*, 
+             COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
+             FROM tab_updates
+             LEFT JOIN tab_update_locations ON tab_updates.shop_id = tab_update_locations.shop_id
+               AND tab_updates.tab_id = tab_update_locations.shop_id
+             LEFT JOIN locations ON locations.shop_id = tabs.shop_id AND locations.id = tab_update_locations.location_id
+             WHERE tab_updates.shop_id = tabs.shop_id AND tab_updates.tab_id = tabs.id
+             GROUP BY tab_updates.shop_id, tab_updates.tab_id
+            ) AS tab_updates
+      ) AS pending_updates,
       array_remove(array_agg(tab_users.email), null) as verification_list,
       EXISTS(
         SELECT tab_bills.id
@@ -325,10 +386,9 @@ func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.TabOverview
        WHERE tab_locations.tab_id = tabs.id
       ) AS locations
     FROM tabs
-    LEFT JOIN tab_updates AS u ON tabs.shop_id = u.shop_id AND tabs.id = u.tab_id
     LEFT JOIN tab_users ON tabs.shop_id = tab_users.shop_id AND tabs.id = tab_users.tab_id
     WHERE tabs.shop_id = @shopId
-    GROUP BY tabs.shop_id, tabs.id, u.*`,
+    GROUP BY tabs.shop_id, tabs.id`,
 		pgx.NamedArgs{
 			"shopId": shopId,
 		})
@@ -353,9 +413,16 @@ func (s *PgxStore) GetTabById(ctx context.Context, shopId int, tabId int) (types
         WHERE tab_bills.shop_id = tabs.shop_id AND tab_bills.tab_id = tabs.id AND tab_bills.is_paid = FALSE
         LIMIT 1
       ) as is_pending_balance,
-      (SELECT to_jsonb(tab_updates.*) as pending_updates
-       FROM tab_updates
-       WHERE tab_updates.shop_id = tabs.shop_id AND tab_updates.tab_id = tabs.id
+      (SELECT to_jsonb(tab_updates) as pending_updates
+       FROM (SELECT tab_updates.*, 
+             COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
+             FROM tab_updates
+             LEFT JOIN tab_update_locations ON tab_updates.shop_id = tab_update_locations.shop_id
+               AND tab_updates.tab_id = tab_update_locations.shop_id
+             LEFT JOIN locations ON locations.shop_id = tabs.shop_id AND locations.id = tab_update_locations.location_id
+             WHERE tab_updates.shop_id = tabs.shop_id AND tab_updates.tab_id = tabs.id
+             GROUP BY tab_updates.shop_id, tab_updates.tab_id
+            ) AS tab_updates
       ) AS pending_updates,
       (SELECT COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
        FROM locations
@@ -483,6 +550,40 @@ func (s *PgxStore) setTabLocations(ctx context.Context, tx pgx.Tx, shopId int, t
 
 	_, err = tx.Exec(ctx,
 		`DELETE FROM tab_locations WHERE shop_id = @shopId AND tab_id = @tabId AND NOT (location_id = ANY (@locationIds))`,
+		pgx.NamedArgs{
+			"shopId":      shopId,
+			"tabId":       tabId,
+			"locationIds": locationIds,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	return nil
+}
+
+func (s *PgxStore) SetTabUpdateLocations(ctx context.Context, tx pgx.Tx, shopId int, tabId int, locationIds []int) error {
+	_, err := tx.Exec(ctx, `
+    CREATE TEMPORARY TABLE _temp_upsert_tab_update_locations (LIKE tab_update_locations INCLUDING ALL ) ON COMMIT DROP`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_tab_update_locations"}, []string{"shop_id", "tab_id", "location_id"}, pgx.CopyFromSlice(len(locationIds), func(i int) ([]any, error) {
+		return []any{shopId, tabId, locationIds[i]}, nil
+	}))
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx, `
+    INSERT INTO tab_update_locations SELECT * FROM _temp_upsert_tab_update_locations ON CONFLICT DO NOTHING`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx,
+		`DELETE FROM tab_update_locations WHERE shop_id = @shopId AND tab_id = @tabId AND NOT (location_id = ANY (@locationIds))`,
 		pgx.NamedArgs{
 			"shopId":      shopId,
 			"tabId":       tabId,
