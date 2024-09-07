@@ -67,7 +67,7 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shop
 		return authErr
 	}
 
-	if reflect.DeepEqual(tab.TabCreate.TabUpdate.TabBase, data.TabBase) && reflect.DeepEqual(tab.VerificationList, data.VerificationList) {
+	if reflect.DeepEqual(tab.TabBase, data.TabBase) && reflect.DeepEqual(tab.VerificationList, data.VerificationList) {
 		return nil
 	}
 
@@ -79,7 +79,7 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shop
 		}
 	} else if tab.Status == types.TAB_STATUS_CONFIRMED.String() {
 		// Here it must be the case that the user is the tab owner, so only request an update so long as the tab is in the confirmed state
-		if !reflect.DeepEqual(tab.TabCreate.TabUpdate.TabBase, data.TabBase) {
+		if !reflect.DeepEqual(tab.TabBase, data.TabBase) {
 			err = h.store.SetTabUpdates(ctx, shopId, tabId, data)
 		} else {
 			err = h.store.SetTabUsers(ctx, shopId, tabId, data.VerificationList)
