@@ -361,7 +361,7 @@ func (s *PgxStore) GetTabById(ctx context.Context, shopId int, tabId int) (types
        FROM locations
        LEFT JOIN tab_locations ON tab_locations.shop_id = locations.shop_id AND tab_locations.location_id = locations.id
        WHERE tab_locations.tab_id = tabs.id
-      ) AS locations
+      ) AS locations,
       (SELECT COALESCE(json_agg(tab_bills) FILTER (WHERE tab_bills.id IS NOT NULL), '[]') AS bills
         FROM 
         (SELECT tab_bills.*, 
