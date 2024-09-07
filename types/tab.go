@@ -104,9 +104,15 @@ type TabBase struct {
 	BillingIntervalDays int     `json:"billing_interval_days" db:"billing_interval_days" validate:"gte=1,lte=365"`
 }
 
+type TabUpdates struct {
+	TabBase
+	Locations []Location `json:"locations" db:"locations"`
+}
+
 type TabUpdate struct {
 	TabBase
 	VerificationList []string `json:"verification_list" db:"verification_list" validate:"required,dive,required,email"`
+	LocationIds      []int    `json:"location_ids" db:"location_ids" validate:"required,dive,gte=1,min=1"`
 }
 
 type TabCreate struct {
@@ -117,10 +123,10 @@ type TabCreate struct {
 
 type TabOverview struct {
 	TabCreate
-	Id               int      `json:"id" db:"id" validate:"required,gte=1"`
-	PendingUpdates   *TabBase `json:"pending_updates" db:"pending_updates"`
-	Status           string   `json:"status" db:"status"`
-	IsPendingBalance bool     `json:"is_pending_balance" db:"is_pending_balance"`
+	Id               int         `json:"id" db:"id" validate:"required,gte=1"`
+	PendingUpdates   *TabUpdates `json:"pending_updates" db:"pending_updates"`
+	Status           string      `json:"status" db:"status"`
+	IsPendingBalance bool        `json:"is_pending_balance" db:"is_pending_balance"`
 }
 
 type Tab struct {

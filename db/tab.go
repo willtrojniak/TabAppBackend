@@ -56,6 +56,11 @@ func (s *PgxStore) CreateTab(ctx context.Context, data *types.TabCreate, status 
 		return err
 	}
 
+	err = s.setTabLocations(ctx, tx, data.ShopId, tabId, data.LocationIds)
+	if err != nil {
+		return err
+	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -313,7 +318,11 @@ func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.TabOverview
         FROM tab_bills
         WHERE tab_bills.shop_id = tabs.shop_id AND tab_bills.tab_id = tabs.id AND tab_bills.is_paid = FALSE
         LIMIT 1
-      ) as is_pending_balance
+      ) as is_pending_balance,
+      (SELECT COALESCE(json_agg(tab_locations.*) FILTER (WHERE tab_locations.tab_id IS NOT NULL), '[]') AS locations
+       FROM tab_locations
+       WHERE tab_locations.shop_id = tabs.shop_id AND tab_locations.tab_id = tabs.id
+      ) AS locations
     FROM tabs
     LEFT JOIN tab_updates AS u ON tabs.shop_id = u.shop_id AND tabs.id = u.tab_id
     LEFT JOIN tab_users ON tabs.shop_id = tab_users.shop_id AND tabs.id = tab_users.tab_id
@@ -347,6 +356,10 @@ func (s *PgxStore) GetTabById(ctx context.Context, shopId int, tabId int) (types
        FROM tab_updates
        WHERE tab_updates.shop_id = tabs.shop_id AND tab_updates.tab_id = tabs.id
       ) AS pending_updates,
+      (SELECT COALESCE(json_agg(tab_locations.*) FILTER (WHERE tab_locations.tab_id IS NOT NULL), '[]') AS locations
+       FROM tab_locations
+       WHERE tab_locations.shop_id = tabs.shop_id AND tab_locations.tab_id = tabs.id
+      ) AS locations,
       (SELECT COALESCE(json_agg(tab_bills) FILTER (WHERE tab_bills.id IS NOT NULL), '[]') AS bills
         FROM 
         (SELECT tab_bills.*, 
@@ -438,6 +451,40 @@ func (s *PgxStore) setTabUsers(ctx context.Context, tx pgx.Tx, shopId int, tabId
 			"shopId": shopId,
 			"tabId":  tabId,
 			"emails": emails,
+		})
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	return nil
+}
+
+func (s *PgxStore) setTabLocations(ctx context.Context, tx pgx.Tx, shopId int, tabId int, locationIds []int) error {
+	_, err := tx.Exec(ctx, `
+    CREATE TEMPORARY TABLE _temp_upsert_tab_locations (LIKE tab_locations INCLUDING ALL ) ON COMMIT DROP`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_tab_locations"}, []string{"shop_id", "tab_id", "location_id"}, pgx.CopyFromSlice(len(locationIds), func(i int) ([]any, error) {
+		return []any{shopId, tabId, locationIds[i]}, nil
+	}))
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx, `
+    INSERT INTO tab_locations SELECT * FROM _temp_upsert_tab_locations ON CONFLICT DO NOTHING`)
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	_, err = tx.Exec(ctx,
+		`DELETE FROM tab_locations WHERE shop_id = @shopId AND tab_id = @tabId AND NOT (location_id = ANY (@locationIds))`,
+		pgx.NamedArgs{
+			"shopId":      shopId,
+			"tabId":       tabId,
+			"locationIds": locationIds,
 		})
 	if err != nil {
 		return handlePgxError(err)
