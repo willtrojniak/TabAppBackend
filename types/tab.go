@@ -109,6 +109,9 @@ type TabUpdates struct {
 	Locations []Location `json:"locations" db:"locations"`
 }
 
+type tabUpdateBase struct {
+}
+
 type TabUpdate struct {
 	TabBase
 	VerificationList []string `json:"verification_list" db:"verification_list" validate:"required,dive,required,email"`
@@ -122,11 +125,15 @@ type TabCreate struct {
 }
 
 type TabOverview struct {
-	TabCreate
+	TabBase
 	Id               int         `json:"id" db:"id" validate:"required,gte=1"`
+	ShopId           int         `json:"shop_id" db:"shop_id" validate:"required,gte=1"`
+	OwnerId          string      `json:"owner_id" db:"owner_id" validate:"required"`
+	VerificationList []string    `json:"verification_list" db:"verification_list" validate:"required,dive,required,email"`
 	PendingUpdates   *TabUpdates `json:"pending_updates" db:"pending_updates"`
 	Status           string      `json:"status" db:"status"`
 	IsPendingBalance bool        `json:"is_pending_balance" db:"is_pending_balance"`
+	Locations        []Location  `json:"locations" db:"locations"`
 }
 
 type Tab struct {
