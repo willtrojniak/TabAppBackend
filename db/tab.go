@@ -319,9 +319,10 @@ func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.TabOverview
         WHERE tab_bills.shop_id = tabs.shop_id AND tab_bills.tab_id = tabs.id AND tab_bills.is_paid = FALSE
         LIMIT 1
       ) as is_pending_balance,
-      (SELECT COALESCE(json_agg(tab_locations.*) FILTER (WHERE tab_locations.tab_id IS NOT NULL), '[]') AS locations
-       FROM tab_locations
-       WHERE tab_locations.shop_id = tabs.shop_id AND tab_locations.tab_id = tabs.id
+      (SELECT COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
+       FROM locations
+       LEFT JOIN tab_locations ON tab_locations.shop_id = locations.shop_id AND tab_locations.location_id = locations.id
+       WHERE tab_locations.tab_id = tabs.id
       ) AS locations
     FROM tabs
     LEFT JOIN tab_updates AS u ON tabs.shop_id = u.shop_id AND tabs.id = u.tab_id
@@ -356,10 +357,11 @@ func (s *PgxStore) GetTabById(ctx context.Context, shopId int, tabId int) (types
        FROM tab_updates
        WHERE tab_updates.shop_id = tabs.shop_id AND tab_updates.tab_id = tabs.id
       ) AS pending_updates,
-      (SELECT COALESCE(json_agg(tab_locations.*) FILTER (WHERE tab_locations.tab_id IS NOT NULL), '[]') AS locations
-       FROM tab_locations
-       WHERE tab_locations.shop_id = tabs.shop_id AND tab_locations.tab_id = tabs.id
-      ) AS locations,
+      (SELECT COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
+       FROM locations
+       LEFT JOIN tab_locations ON tab_locations.shop_id = locations.shop_id AND tab_locations.location_id = locations.id
+       WHERE tab_locations.tab_id = tabs.id
+      ) AS locations
       (SELECT COALESCE(json_agg(tab_bills) FILTER (WHERE tab_bills.id IS NOT NULL), '[]') AS bills
         FROM 
         (SELECT tab_bills.*, 
