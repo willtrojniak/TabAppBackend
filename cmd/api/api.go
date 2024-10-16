@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/WilliamTrojniak/TabAppBackend/cache"
 	"github.com/WilliamTrojniak/TabAppBackend/db"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
@@ -34,7 +35,8 @@ func NewAPIServer(addr string, store *db.PgxStore, cache *redis.Client) *APIServ
 }
 
 func (s *APIServer) Run() error {
-	sessionManager := sessions.New(s.cache, time.Hour*24*30, time.Hour*1, services.HandleHttpError, slog.Default())
+	sessionStore := cache.NewRedisCache(s.cache)
+	sessionManager := sessions.New(sessionStore, time.Hour*24*30, time.Hour*1, services.HandleHttpError, slog.Default())
 
 	authHandler, err := auth.NewHandler(services.HandleHttpError, sessionManager, slog.Default())
 	if err != nil {
@@ -55,5 +57,5 @@ func (s *APIServer) Run() error {
 	router.Handle("/api/v1/", http.StripPrefix("/api/v1", WithMiddleware(
 		sessionManager.RequireAuth)(v1)))
 
-	return http.ListenAndServe(s.addr, WithMiddleware(RequestLoggerMiddleware, CORSMiddleware, sessionManager.RequireCSRFHeader)(router))
+	return http.ListenAndServe(s.addr, WithMiddleware(RequestLoggerMiddleware, CORSMiddleware, sessionManager.RequireCSRFToken)(router))
 }

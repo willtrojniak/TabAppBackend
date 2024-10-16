@@ -27,20 +27,20 @@ func NewHandler(store *db.PgxStore, sessions *sessions.Handler, handleError serv
 	}
 }
 
-func (h *Handler) CreateUser(context context.Context, data *types.UserCreate) error {
+func (h *Handler) CreateUser(context context.Context, data *types.UserCreate) (*types.User, error) {
 	h.logger.Debug("Creating user", "id", data.Id)
 	err := types.ValidateData(data, h.logger)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = h.store.CreateUser(context, data)
+	user, err := h.store.CreateUser(context, data)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	h.logger.Debug("Created user", "id", data.Id)
-	return nil
+	return user, nil
 }
 
 func (h *Handler) GetUser(context context.Context, session *sessions.Session) (*types.User, error) {

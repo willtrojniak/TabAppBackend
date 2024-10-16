@@ -18,7 +18,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type CreateUserFn func(context context.Context, user *types.UserCreate) error
+type CreateUserFn func(context context.Context, user *types.UserCreate) (*types.User, error)
 
 type Handler struct {
 	logger         *slog.Logger
@@ -135,12 +135,12 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Add the user to the database if not already
-	err = h.createUser(r.Context(), &types.UserCreate{Id: claims.Sub, Email: claims.Email, Name: claims.Name})
+	user, err := h.createUser(r.Context(), &types.UserCreate{Id: claims.Sub, Email: claims.Email, Name: claims.Name})
 	if err != nil {
 		return services.NewInternalServiceError(err)
 	}
 
-	_, err = h.sessionManager.CreateSession(w, r, claims.Sub)
+	_, err = h.sessionManager.SetNewSession(w, r, user)
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) error {
 
-	err := h.sessionManager.ClearSession(w, r)
+	_, err := h.sessionManager.SetNewSession(w, r, nil)
 	if err != nil {
 		return err
 	}

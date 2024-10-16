@@ -7,16 +7,24 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateUser(ctx context.Context, data *types.UserCreate) error {
-	_, err := s.pool.Exec(ctx, `
-    INSERT INTO users (id, email, name) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE
-      SET email = excluded.email, name = excluded.name`, data.Id, data.Email, data.Name)
+func (s *PgxStore) CreateUser(ctx context.Context, data *types.UserCreate) (*types.User, error) {
+	row, _ := s.pool.Query(ctx, `
+    INSERT INTO users (id, email, name) VALUES (@id, @email, @name) ON CONFLICT (id) DO UPDATE
+      SET email = excluded.email, name = excluded.name
+      RETURNING *`,
+		pgx.NamedArgs{
+			"id":    data.Id,
+			"email": data.Email,
+			"name":  data.Name,
+		})
+
+	user, err := pgx.CollectOneRow(row, pgx.RowToAddrOfStructByName[types.User])
 
 	if err != nil {
-		return handlePgxError(err)
+		return nil, handlePgxError(err)
 	}
 
-	return nil
+	return user, nil
 }
 
 func (s *PgxStore) GetUser(ctx context.Context, userId string) (*types.User, error) {
