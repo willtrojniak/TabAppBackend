@@ -3,12 +3,12 @@ package db
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateLocation(ctx context.Context, data *types.LocationCreate) error {
+func (s *PgxStore) CreateLocation(ctx context.Context, data *models.LocationCreate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -35,7 +35,7 @@ func (s *PgxStore) CreateLocation(ctx context.Context, data *types.LocationCreat
 	return nil
 }
 
-func (s *PgxStore) UpdateLocation(ctx context.Context, shopId int, locationId int, data *types.LocationUpdate) error {
+func (s *PgxStore) UpdateLocation(ctx context.Context, shopId int, locationId int, data *models.LocationUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)

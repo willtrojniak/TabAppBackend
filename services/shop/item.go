@@ -4,17 +4,17 @@ import (
 	"context"
 	"math"
 
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 )
 
-func (h *Handler) CreateItem(ctx context.Context, session *sessions.Session, data *types.ItemCreate) error {
+func (h *Handler) CreateItem(ctx context.Context, session *sessions.Session, data *models.ItemCreate) error {
 	err := h.AuthorizeModifyShop(ctx, session, data.ShopId)
 	if err != nil {
 		return err
 	}
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func (h *Handler) CreateItem(ctx context.Context, session *sessions.Session, dat
 	return nil
 }
 
-func (h *Handler) GetItems(ctx context.Context, shopId int) ([]types.ItemOverview, error) {
+func (h *Handler) GetItems(ctx context.Context, shopId int) ([]models.ItemOverview, error) {
 	items, err := h.store.GetItems(ctx, shopId)
 	if err != nil {
 		return nil, err
@@ -38,13 +38,13 @@ func (h *Handler) GetItems(ctx context.Context, shopId int) ([]types.ItemOvervie
 	return items, nil
 }
 
-func (h *Handler) UpdateItem(ctx context.Context, session *sessions.Session, shopId int, itemId int, data *types.ItemUpdate) error {
+func (h *Handler) UpdateItem(ctx context.Context, session *sessions.Session, shopId int, itemId int, data *models.ItemUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
 	}
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}
@@ -60,10 +60,10 @@ func (h *Handler) UpdateItem(ctx context.Context, session *sessions.Session, sho
 
 }
 
-func (h *Handler) GetItem(ctx context.Context, shopId int, itemId int) (types.Item, error) {
+func (h *Handler) GetItem(ctx context.Context, shopId int, itemId int) (models.Item, error) {
 	item, err := h.store.GetItem(ctx, shopId, itemId)
 	if err != nil {
-		return types.Item{}, err
+		return models.Item{}, err
 	}
 
 	return item, nil
@@ -84,13 +84,13 @@ func (h *Handler) DeleteItem(ctx context.Context, session *sessions.Session, sho
 	return nil
 }
 
-func (h *Handler) CreateItemVariant(ctx context.Context, session *sessions.Session, data *types.ItemVariantCreate) error {
+func (h *Handler) CreateItemVariant(ctx context.Context, session *sessions.Session, data *models.ItemVariantCreate) error {
 	err := h.AuthorizeModifyShop(ctx, session, data.ShopId)
 	if err != nil {
 		return err
 	}
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}
@@ -103,13 +103,13 @@ func (h *Handler) CreateItemVariant(ctx context.Context, session *sessions.Sessi
 	return nil
 }
 
-func (h *Handler) UpdateItemVariant(ctx context.Context, session *sessions.Session, shopId int, itemId int, variantId int, data *types.ItemVariantUpdate) error {
+func (h *Handler) UpdateItemVariant(ctx context.Context, session *sessions.Session, shopId int, itemId int, variantId int, data *models.ItemVariantUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
 	}
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}

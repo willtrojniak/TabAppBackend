@@ -6,9 +6,9 @@ import (
 	"log/slog"
 
 	"github.com/WilliamTrojniak/TabAppBackend/db"
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 )
 
 type Handler struct {
@@ -27,7 +27,7 @@ func NewHandler(store *db.PgxStore, sessions *sessions.Handler, handleError serv
 	}
 }
 
-func (h *Handler) CreateShop(ctx context.Context, session *sessions.Session, data *types.ShopCreate) error {
+func (h *Handler) CreateShop(ctx context.Context, session *sessions.Session, data *models.ShopCreate) error {
 	h.logger.Debug("Creating shop")
 	userId, err := session.GetUserId()
 	if err != nil {
@@ -35,7 +35,7 @@ func (h *Handler) CreateShop(ctx context.Context, session *sessions.Session, dat
 	}
 
 	// Data validation
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (h *Handler) CreateShop(ctx context.Context, session *sessions.Session, dat
 	return nil
 }
 
-func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]types.ShopOverview, error) {
+func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]models.ShopOverview, error) {
 	shops, err := h.store.GetShops(ctx, limit, offset)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]types.
 	return shops, nil
 }
 
-func (h *Handler) GetShopsByUserId(ctx context.Context, userId string) ([]types.ShopOverview, error) {
+func (h *Handler) GetShopsByUserId(ctx context.Context, userId string) ([]models.ShopOverview, error) {
 	shops, err := h.store.GetShopsByUserId(ctx, userId)
 	if err != nil {
 		return nil, err
@@ -70,22 +70,22 @@ func (h *Handler) GetShopsByUserId(ctx context.Context, userId string) ([]types.
 	return shops, err
 }
 
-func (h *Handler) GetShopById(ctx context.Context, shopId int) (types.Shop, error) {
+func (h *Handler) GetShopById(ctx context.Context, shopId int) (models.Shop, error) {
 	shop, err := h.store.GetShopById(ctx, shopId)
 	if err != nil {
-		return types.Shop{}, err
+		return models.Shop{}, err
 	}
 	return shop, err
 }
 
-func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, shopId int, data *types.ShopUpdate) error {
+func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, shopId int, data *models.ShopUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
 	}
 
 	h.logger.Debug("Updating Shop", "id", shopId)
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}

@@ -5,12 +5,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateTab(ctx context.Context, data *types.TabCreate, status types.TabStatus) error {
+func (s *PgxStore) CreateTab(ctx context.Context, data *models.TabCreate, status models.TabStatus) error {
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -69,7 +69,7 @@ func (s *PgxStore) CreateTab(ctx context.Context, data *types.TabCreate, status 
 	return nil
 }
 
-func (s *PgxStore) UpdateTab(ctx context.Context, shopId int, tabId int, data *types.TabUpdate) error {
+func (s *PgxStore) UpdateTab(ctx context.Context, shopId int, tabId int, data *models.TabUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -162,7 +162,7 @@ func (s *PgxStore) ApproveTab(ctx context.Context, shopId int, tabId int) error 
     `, pgx.NamedArgs{
 		"shopId": shopId,
 		"tabId":  tabId,
-		"status": types.TAB_STATUS_CONFIRMED,
+		"status": models.TAB_STATUS_CONFIRMED,
 	})
 	if err != nil {
 		return handlePgxError(err)
@@ -246,7 +246,7 @@ func (s *PgxStore) CloseTab(ctx context.Context, shopId int, tabId int) error {
     `, pgx.NamedArgs{
 		"shopId": shopId,
 		"tabId":  tabId,
-		"status": types.TAB_STATUS_CLOSED,
+		"status": models.TAB_STATUS_CLOSED,
 	})
 	if err != nil {
 		return handlePgxError(err)
@@ -275,7 +275,7 @@ func (s *PgxStore) CloseTab(ctx context.Context, shopId int, tabId int) error {
 }
 
 func (s *PgxStore) MarkTabBillPaid(ctx context.Context, shopId int, tabId int, billId int) error {
-	endDate := types.DateOf(time.Now())
+	endDate := models.DateOf(time.Now())
 	println(endDate.String())
 	result, err := s.pool.Exec(ctx, `
     UPDATE tab_bills 
@@ -297,7 +297,7 @@ func (s *PgxStore) MarkTabBillPaid(ctx context.Context, shopId int, tabId int, b
 	return nil
 }
 
-func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId int, tabId int, data *types.TabUpdate) error {
+func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId int, tabId int, data *models.TabUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -358,7 +358,7 @@ func (s *PgxStore) SetTabUpdates(ctx context.Context, shopId int, tabId int, dat
 
 }
 
-func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.TabOverview, error) {
+func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]models.TabOverview, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT 
       tabs.*, 
@@ -397,14 +397,14 @@ func (s *PgxStore) GetTabs(ctx context.Context, shopId int) ([]types.TabOverview
 		return nil, handlePgxError(err)
 	}
 
-	tabs, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.TabOverview])
+	tabs, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.TabOverview])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}
 	return tabs, nil
 }
 
-func (s *PgxStore) GetTabById(ctx context.Context, shopId int, tabId int) (types.Tab, error) {
+func (s *PgxStore) GetTabById(ctx context.Context, shopId int, tabId int) (models.Tab, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT tabs.*, 
       EXISTS(
@@ -464,12 +464,12 @@ func (s *PgxStore) GetTabById(ctx context.Context, shopId int, tabId int) (types
 		})
 
 	if err != nil {
-		return types.Tab{}, handlePgxError(err)
+		return models.Tab{}, handlePgxError(err)
 	}
 
-	tab, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByNameLax[types.Tab])
+	tab, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByNameLax[models.Tab])
 	if err != nil {
-		return types.Tab{}, handlePgxError(err)
+		return models.Tab{}, handlePgxError(err)
 	}
 	return tab, nil
 }
@@ -596,7 +596,7 @@ func (s *PgxStore) SetTabUpdateLocations(ctx context.Context, tx pgx.Tx, shopId 
 	return nil
 }
 
-func (s *PgxStore) insertBill(ctx context.Context, tx pgx.Tx, shopId int, tabId int, startDate types.Date, endDate types.Date) (int, error) {
+func (s *PgxStore) insertBill(ctx context.Context, tx pgx.Tx, shopId int, tabId int, startDate models.Date, endDate models.Date) (int, error) {
 	var billId int
 	println("start ", startDate.String(), "end", endDate.String())
 
@@ -636,12 +636,12 @@ func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tab
 			"tabId":  tabId,
 		})
 
-	bill, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.BillOverview])
+	bill, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.BillOverview])
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			endDate := tab.EndDate
 			if tab.StartDate.AddDays(tab.BillingIntervalDays).Before(endDate.Date) {
-				endDate = types.Date{Date: tab.StartDate.AddDays(tab.BillingIntervalDays - 1)}
+				endDate = models.Date{Date: tab.StartDate.AddDays(tab.BillingIntervalDays - 1)}
 			}
 
 			id, err := s.insertBill(ctx, tx, shopId, tabId, tab.StartDate, endDate)
@@ -655,7 +655,7 @@ func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tab
 	}
 
 	now := time.Now()
-	today := types.DateOf(now)
+	today := models.DateOf(now)
 
 	if !bill.StartDate.After(today.Date) && !bill.EndDate.Before(today.Date) && !bill.IsPaid {
 		return bill.Id, nil
@@ -663,7 +663,7 @@ func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tab
 
 	endDate := tab.EndDate
 	if bill.EndDate.AddDays(tab.BillingIntervalDays - 1).Before(endDate.Date) {
-		endDate = types.Date{Date: bill.EndDate.AddDays(tab.BillingIntervalDays - 1)}
+		endDate = models.Date{Date: bill.EndDate.AddDays(tab.BillingIntervalDays - 1)}
 	}
 
 	id, err := s.insertBill(ctx, tx, shopId, tabId, bill.EndDate, endDate)
@@ -674,7 +674,7 @@ func (s *PgxStore) getTargetBill(ctx context.Context, tx pgx.Tx, shopId int, tab
 
 }
 
-func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, data *types.BillOrderCreate) error {
+func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, data *models.BillOrderCreate) error {
 	err := s.updateTabOrders(ctx, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `
     INSERT INTO order_items SELECT * FROM _temp_upsert_order_items ON CONFLICT (shop_id, tab_id, bill_id, item_id) DO UPDATE
@@ -697,7 +697,7 @@ func (s *PgxStore) AddOrderToTab(ctx context.Context, shopId int, tabId int, dat
 	return nil
 }
 
-func (s *PgxStore) RemoveOrderFromTab(ctx context.Context, shopId int, tabId int, data *types.BillOrderCreate) error {
+func (s *PgxStore) RemoveOrderFromTab(ctx context.Context, shopId int, tabId int, data *models.BillOrderCreate) error {
 	err := s.updateTabOrders(ctx, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `
       UPDATE order_items SET
@@ -732,7 +732,7 @@ func (s *PgxStore) RemoveOrderFromTab(ctx context.Context, shopId int, tabId int
 	return nil
 }
 
-func (s *PgxStore) updateTabOrders(ctx context.Context, updateFn func(pgx.Tx) error, shopId int, tabId int, data *types.BillOrderCreate) error {
+func (s *PgxStore) updateTabOrders(ctx context.Context, updateFn func(pgx.Tx) error, shopId int, tabId int, data *models.BillOrderCreate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)

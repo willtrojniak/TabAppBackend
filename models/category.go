@@ -1,4 +1,4 @@
-package types
+package models
 
 type categoryBase struct {
 	Name string `json:"name" db:"name" validate:"required,min=1,max=64"`

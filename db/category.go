@@ -3,12 +3,12 @@ package db
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateCategory(ctx context.Context, data *types.CategoryCreate) error {
+func (s *PgxStore) CreateCategory(ctx context.Context, data *models.CategoryCreate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -41,7 +41,7 @@ func (s *PgxStore) CreateCategory(ctx context.Context, data *types.CategoryCreat
 	return nil
 }
 
-func (s *PgxStore) GetCategories(ctx context.Context, shopId int) ([]types.Category, error) {
+func (s *PgxStore) GetCategories(ctx context.Context, shopId int) ([]models.Category, error) {
 
 	rows, err := s.pool.Query(ctx,
 		`SELECT item_categories.*, array_remove(array_agg(items.id ORDER BY items_to_categories.index), null) AS item_ids FROM item_categories
@@ -57,7 +57,7 @@ func (s *PgxStore) GetCategories(ctx context.Context, shopId int) ([]types.Categ
 		return nil, handlePgxError(err)
 	}
 
-	categories, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.Category])
+	categories, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.Category])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}
@@ -65,7 +65,7 @@ func (s *PgxStore) GetCategories(ctx context.Context, shopId int) ([]types.Categ
 	return categories, nil
 }
 
-func (s *PgxStore) UpdateCategory(ctx context.Context, shopId int, categoryId int, data *types.CategoryUpdate) error {
+func (s *PgxStore) UpdateCategory(ctx context.Context, shopId int, categoryId int, data *models.CategoryUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)

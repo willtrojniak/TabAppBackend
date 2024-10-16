@@ -3,17 +3,17 @@ package shop
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 )
 
-func (h *Handler) CreateLocation(ctx context.Context, session *sessions.Session, data *types.LocationCreate) error {
+func (h *Handler) CreateLocation(ctx context.Context, session *sessions.Session, data *models.LocationCreate) error {
 	err := h.AuthorizeModifyShop(ctx, session, data.ShopId)
 	if err != nil {
 		return err
 	}
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}
@@ -26,13 +26,13 @@ func (h *Handler) CreateLocation(ctx context.Context, session *sessions.Session,
 	return nil
 }
 
-func (h *Handler) UpdateLocation(ctx context.Context, session *sessions.Session, shopId int, locationId int, data *types.LocationUpdate) error {
+func (h *Handler) UpdateLocation(ctx context.Context, session *sessions.Session, shopId int, locationId int, data *models.LocationUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
 	}
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}

@@ -3,11 +3,11 @@ package db
 import (
 	"context"
 
-	"github.com/WilliamTrojniak/TabAppBackend/types"
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateShop(ctx context.Context, data *types.ShopCreate) error {
+func (s *PgxStore) CreateShop(ctx context.Context, data *models.ShopCreate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -39,7 +39,7 @@ func (s *PgxStore) CreateShop(ctx context.Context, data *types.ShopCreate) error
 	return nil
 }
 
-func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types.ShopOverview, error) {
+func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]models.ShopOverview, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
@@ -54,7 +54,7 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 		return nil, handlePgxError(err)
 	}
 
-	shops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.ShopOverview])
+	shops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.ShopOverview])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}
@@ -62,7 +62,7 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]types
 
 }
 
-func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]types.ShopOverview, error) {
+func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]models.ShopOverview, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
@@ -76,7 +76,7 @@ func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]types
 		return nil, handlePgxError(err)
 	}
 
-	shops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.ShopOverview])
+	shops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.ShopOverview])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}
@@ -84,7 +84,7 @@ func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]types
 
 }
 
-func (s *PgxStore) GetShopById(ctx context.Context, shopId int) (types.Shop, error) {
+func (s *PgxStore) GetShopById(ctx context.Context, shopId int) (models.Shop, error) {
 	row, err := s.pool.Query(ctx,
 		`SELECT shops.*, 
       array_remove(array_agg(payment_methods.method), NULL) as payment_methods,
@@ -100,19 +100,19 @@ func (s *PgxStore) GetShopById(ctx context.Context, shopId int) (types.Shop, err
 			"shopId": shopId,
 		})
 	if err != nil {
-		return types.Shop{}, handlePgxError(err)
+		return models.Shop{}, handlePgxError(err)
 	}
 
-	shop, err := pgx.CollectOneRow(row, pgx.RowToStructByNameLax[types.Shop])
+	shop, err := pgx.CollectOneRow(row, pgx.RowToStructByNameLax[models.Shop])
 	if err != nil {
-		return types.Shop{}, handlePgxError(err)
+		return models.Shop{}, handlePgxError(err)
 	}
 
 	return shop, nil
 
 }
 
-func (s *PgxStore) UpdateShop(ctx context.Context, shopId int, data *types.ShopUpdate) error {
+func (s *PgxStore) UpdateShop(ctx context.Context, shopId int, data *models.ShopUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)

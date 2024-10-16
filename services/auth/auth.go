@@ -11,14 +11,14 @@ import (
 	"time"
 
 	"github.com/WilliamTrojniak/TabAppBackend/env"
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
 
-type CreateUserFn func(context context.Context, user *types.UserCreate) (*types.User, error)
+type CreateUserFn func(context context.Context, user *models.UserCreate) (*models.User, error)
 
 type Handler struct {
 	logger         *slog.Logger
@@ -135,7 +135,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Add the user to the database if not already
-	user, err := h.createUser(r.Context(), &types.UserCreate{Id: claims.Sub, Email: claims.Email, Name: claims.Name})
+	user, err := h.createUser(r.Context(), &models.UserCreate{Id: claims.Sub, Email: claims.Email, Name: claims.Name})
 	if err != nil {
 		return services.NewInternalServiceError(err)
 	}

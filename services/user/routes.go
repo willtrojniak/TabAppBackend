@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/WilliamTrojniak/TabAppBackend/types"
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 )
 
 const userIdPath = "userId"
@@ -49,8 +49,8 @@ func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	userId := r.PathValue(userIdPath)
 
-	data := types.UserUpdate{}
-	err = types.ReadRequestJson(r, &data)
+	data := models.UserUpdate{}
+	err = models.ReadRequestJson(r, &data)
 	if err != nil {
 		h.handleError(w, err)
 		return

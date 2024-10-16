@@ -3,17 +3,17 @@ package shop
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 )
 
-func (h *Handler) CreateCategory(ctx context.Context, session *sessions.Session, data *types.CategoryCreate) error {
+func (h *Handler) CreateCategory(ctx context.Context, session *sessions.Session, data *models.CategoryCreate) error {
 	err := h.AuthorizeModifyShop(ctx, session, data.ShopId)
 	if err != nil {
 		return err
 	}
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}
@@ -26,7 +26,7 @@ func (h *Handler) CreateCategory(ctx context.Context, session *sessions.Session,
 	return nil
 }
 
-func (h *Handler) GetCategories(ctx context.Context, shopId int) ([]types.Category, error) {
+func (h *Handler) GetCategories(ctx context.Context, shopId int) ([]models.Category, error) {
 
 	categories, err := h.store.GetCategories(ctx, shopId)
 	if err != nil {
@@ -37,13 +37,13 @@ func (h *Handler) GetCategories(ctx context.Context, shopId int) ([]types.Catego
 
 }
 
-func (h *Handler) UpdateCategory(ctx context.Context, session *sessions.Session, shopId int, categoryId int, data *types.CategoryUpdate) error {
+func (h *Handler) UpdateCategory(ctx context.Context, session *sessions.Session, shopId int, categoryId int, data *models.CategoryUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
 	}
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}

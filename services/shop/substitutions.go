@@ -3,17 +3,17 @@ package shop
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 )
 
-func (h *Handler) CreateSubstitutionGroup(ctx context.Context, session *sessions.Session, data *types.SubstitutionGroupCreate) error {
+func (h *Handler) CreateSubstitutionGroup(ctx context.Context, session *sessions.Session, data *models.SubstitutionGroupCreate) error {
 	err := h.AuthorizeModifyShop(ctx, session, data.ShopId)
 	if err != nil {
 		return err
 	}
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}
@@ -26,13 +26,13 @@ func (h *Handler) CreateSubstitutionGroup(ctx context.Context, session *sessions
 	return nil
 }
 
-func (h *Handler) UpdateSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId int, substitutionGroupId int, data *types.SubstitutionGroupUpdate) error {
+func (h *Handler) UpdateSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId int, substitutionGroupId int, data *models.SubstitutionGroupUpdate) error {
 	err := h.AuthorizeModifyShop(ctx, session, shopId)
 	if err != nil {
 		return err
 	}
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func (h *Handler) UpdateSubstitutionGroup(ctx context.Context, session *sessions
 	return nil
 }
 
-func (h *Handler) GetSubstitutionGroups(ctx context.Context, shopId int) ([]types.SubstitutionGroup, error) {
+func (h *Handler) GetSubstitutionGroups(ctx context.Context, shopId int) ([]models.SubstitutionGroup, error) {
 	groups, err := h.store.GetSubstitutionGroups(ctx, shopId)
 	if err != nil {
 		return nil, err

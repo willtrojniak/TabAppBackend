@@ -3,12 +3,12 @@ package db
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateItem(ctx context.Context, data *types.ItemCreate) error {
+func (s *PgxStore) CreateItem(ctx context.Context, data *models.ItemCreate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -51,7 +51,7 @@ func (s *PgxStore) CreateItem(ctx context.Context, data *types.ItemCreate) error
 	return nil
 }
 
-func (s *PgxStore) GetItems(ctx context.Context, shopId int) ([]types.ItemOverview, error) {
+func (s *PgxStore) GetItems(ctx context.Context, shopId int) ([]models.ItemOverview, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT items.base_price, items.name, items.id
     FROM items
@@ -64,7 +64,7 @@ func (s *PgxStore) GetItems(ctx context.Context, shopId int) ([]types.ItemOvervi
 		return nil, handlePgxError(err)
 	}
 
-	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.ItemOverview])
+	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.ItemOverview])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}
@@ -73,7 +73,7 @@ func (s *PgxStore) GetItems(ctx context.Context, shopId int) ([]types.ItemOvervi
 
 }
 
-func (s *PgxStore) GetItem(ctx context.Context, shopId int, itemId int) (types.Item, error) {
+func (s *PgxStore) GetItem(ctx context.Context, shopId int, itemId int) (models.Item, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT items.id, items.name, items.base_price,
       (SELECT COALESCE(json_agg(item_categories ORDER BY item_categories.name) FILTER (WHERE item_categories.id IS NOT NULL), '[]')
@@ -116,19 +116,19 @@ func (s *PgxStore) GetItem(ctx context.Context, shopId int, itemId int) (types.I
 		})
 
 	if err != nil {
-		return types.Item{}, handlePgxError(err)
+		return models.Item{}, handlePgxError(err)
 	}
 
-	item, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByNameLax[types.Item])
+	item, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByNameLax[models.Item])
 	if err != nil {
-		return types.Item{}, handlePgxError(err)
+		return models.Item{}, handlePgxError(err)
 	}
 
 	return item, nil
 
 }
 
-func (s *PgxStore) UpdateItem(ctx context.Context, shopId int, itemId int, data *types.ItemUpdate) error {
+func (s *PgxStore) UpdateItem(ctx context.Context, shopId int, itemId int, data *models.ItemUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -195,7 +195,7 @@ func (s *PgxStore) DeleteItem(ctx context.Context, shopId int, itemId int) error
 	return nil
 }
 
-func (s *PgxStore) CreateItemVariant(ctx context.Context, data *types.ItemVariantCreate) error {
+func (s *PgxStore) CreateItemVariant(ctx context.Context, data *models.ItemVariantCreate) error {
 	_, err := s.pool.Exec(ctx, `
     INSERT INTO item_variants (shop_id, item_id, name, price, index) VALUES (@shopId, @itemId, @name, @price, @index)`,
 		pgx.NamedArgs{
@@ -213,7 +213,7 @@ func (s *PgxStore) CreateItemVariant(ctx context.Context, data *types.ItemVarian
 	return nil
 }
 
-func (s *PgxStore) UpdateItemVariant(ctx context.Context, shopId int, itemId int, variantId int, data *types.ItemVariantUpdate) error {
+func (s *PgxStore) UpdateItemVariant(ctx context.Context, shopId int, itemId int, variantId int, data *models.ItemVariantUpdate) error {
 	result, err := s.pool.Exec(ctx, `
     UPDATE item_variants SET (name, price, index) = (@name, @price, @index)
     WHERE id = @id AND item_id = @itemId AND shop_id = @shopId`,

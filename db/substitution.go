@@ -3,12 +3,12 @@ package db
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateSubstitutionGroup(ctx context.Context, data *types.SubstitutionGroupCreate) error {
+func (s *PgxStore) CreateSubstitutionGroup(ctx context.Context, data *models.SubstitutionGroupCreate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -41,7 +41,7 @@ func (s *PgxStore) CreateSubstitutionGroup(ctx context.Context, data *types.Subs
 	return nil
 }
 
-func (s *PgxStore) UpdateSubstitutionGroup(ctx context.Context, shopId int, substitutionGroupId int, data *types.SubstitutionGroupUpdate) error {
+func (s *PgxStore) UpdateSubstitutionGroup(ctx context.Context, shopId int, substitutionGroupId int, data *models.SubstitutionGroupUpdate) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return handlePgxError(err)
@@ -77,7 +77,7 @@ func (s *PgxStore) UpdateSubstitutionGroup(ctx context.Context, shopId int, subs
 	return nil
 }
 
-func (s *PgxStore) GetSubstitutionGroups(ctx context.Context, shopId int) ([]types.SubstitutionGroup, error) {
+func (s *PgxStore) GetSubstitutionGroups(ctx context.Context, shopId int) ([]models.SubstitutionGroup, error) {
 	rows, err := s.pool.Query(ctx, `
     SELECT item_substitution_groups.name, item_substitution_groups.id,
     COALESCE(json_agg(items ORDER BY item_substitution_groups_to_items.index) FILTER (WHERE items.id IS NOT NULL), '[]') AS substitutions
@@ -96,7 +96,7 @@ func (s *PgxStore) GetSubstitutionGroups(ctx context.Context, shopId int) ([]typ
 		return nil, handlePgxError(err)
 	}
 
-	data, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[types.SubstitutionGroup])
+	data, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.SubstitutionGroup])
 	if err != nil {
 		return nil, handlePgxError(err)
 	}

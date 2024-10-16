@@ -6,9 +6,9 @@ import (
 	"log/slog"
 
 	"github.com/WilliamTrojniak/TabAppBackend/db"
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 )
 
 type Handler struct {
@@ -27,9 +27,9 @@ func NewHandler(store *db.PgxStore, sessions *sessions.Handler, handleError serv
 	}
 }
 
-func (h *Handler) CreateUser(context context.Context, data *types.UserCreate) (*types.User, error) {
+func (h *Handler) CreateUser(context context.Context, data *models.UserCreate) (*models.User, error) {
 	h.logger.Debug("Creating user", "id", data.Id)
-	err := types.ValidateData(data, h.logger)
+	err := models.ValidateData(data, h.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (h *Handler) CreateUser(context context.Context, data *types.UserCreate) (*
 	return user, nil
 }
 
-func (h *Handler) GetUser(context context.Context, session *sessions.Session) (*types.User, error) {
+func (h *Handler) GetUser(context context.Context, session *sessions.Session) (*models.User, error) {
 	userId, err := session.GetUserId()
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (h *Handler) GetUser(context context.Context, session *sessions.Session) (*
 
 }
 
-func (h *Handler) UpdateUser(context context.Context, session *sessions.Session, userId string, data *types.UserUpdate) error {
+func (h *Handler) UpdateUser(context context.Context, session *sessions.Session, userId string, data *models.UserUpdate) error {
 	err := h.authorizeModifyUser(session, userId)
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func (h *Handler) UpdateUser(context context.Context, session *sessions.Session,
 
 	h.logger.Debug("Updating user", "id", userId)
 
-	err = types.ValidateData(data, h.logger)
+	err = models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}

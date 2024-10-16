@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/WilliamTrojniak/TabAppBackend/cache"
+	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/types"
 	"github.com/WilliamTrojniak/TabAppBackend/util"
 )
 
@@ -56,7 +56,7 @@ func New(store cache.Cache, authTTL time.Duration, unauthTTL time.Duration, h se
 	}
 }
 
-func (s *Handler) SetNewSession(w http.ResponseWriter, r *http.Request, user *types.User) (*Session, error) {
+func (s *Handler) SetNewSession(w http.ResponseWriter, r *http.Request, user *models.User) (*Session, error) {
 	ip := readUserIP(r)
 
 	session, err := s.newSessionFromUser(ip, user)
@@ -161,7 +161,7 @@ func (s *Handler) RequireCSRFToken(next http.Handler) http.HandlerFunc {
 	}
 }
 
-func (s *Handler) newSessionFromUser(ip string, user *types.User) (*Session, error) {
+func (s *Handler) newSessionFromUser(ip string, user *models.User) (*Session, error) {
 	id, err := util.RandString(32)
 	if err != nil {
 		return nil, services.NewInternalServiceError(err)
