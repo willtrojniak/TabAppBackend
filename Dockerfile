@@ -7,13 +7,13 @@ COPY . .
 
 FROM build_base AS build_migrate
 ENV GOCACHE=/root/.cache/go-build
-ARG ENV="dev"
-RUN --mount=type=cache,target="/root/.cach/go-build" go build -v -o ./bin/migrate -ldflags "-X env.EXT_ENVIRONMENT=${ENV}" ./cmd/migrate/main.go
+ARG ENV
+RUN --mount=type=cache,target="/root/.cach/go-build" go build -v -o ./bin/migrate -ldflags "-X github.com/WilliamTrojniak/TabAppBackend/env.EXT_ENVIRONMENT=${ENV}" ./cmd/migrate/main.go
 
 FROM build_base AS build
 ENV GOCACHE=/root/.cache/go-build
-ARG ENV="dev"
-RUN --mount=type=cache,target="/root/.cach/go-build" go build -v -o ./bin/api -ldflags "-X env.EXT_ENVIRONMENT=${ENV}" ./cmd/main.go
+ARG ENV
+RUN --mount=type=cache,target="/root/.cach/go-build" go build -v -o ./bin/api -ldflags "-X github.com/WilliamTrojniak/TabAppBackend/env.EXT_ENVIRONMENT=${ENV}" ./cmd/main.go
 
 FROM debian:bookworm
 RUN apt update

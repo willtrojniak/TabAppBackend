@@ -15,6 +15,7 @@ services:
     secrets:
       - base.env
       - dev.env
+      - prod.env
     volumes:
       - ./cmd/migrate/migrations:/migrations
   db:
@@ -68,6 +69,8 @@ secrets:
     file: ./base.env
   dev.env:
     file: ./dev.env
+  prod.env:
+    file: ./prod.env
   postgres_user:
     file: ./postgres_user.secret
   postgres_password:
