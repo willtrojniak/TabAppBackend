@@ -7,40 +7,30 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateShop(ctx context.Context, data *models.ShopCreate) error {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return handlePgxError(err)
-	}
+func (q *PgxQueries) CreateShop(ctx context.Context, data *models.ShopCreate) error {
+	return q.WithTx(ctx, func(q *PgxQueries) error {
+		row := q.tx.QueryRow(ctx,
+			`INSERT INTO shops (owner_id, name) VALUES (@ownerId, @name) RETURNING id`,
+			pgx.NamedArgs{
+				"ownerId": data.OwnerId,
+				"name":    data.Name,
+			})
+		var shopId int
+		err := row.Scan(&shopId)
+		if err != nil {
+			return handlePgxError(err)
+		}
 
-	defer tx.Rollback(ctx)
-	row := tx.QueryRow(ctx,
-		`INSERT INTO shops (owner_id, name) VALUES (@ownerId, @name) RETURNING id`,
-		pgx.NamedArgs{
-			"ownerId": data.OwnerId,
-			"name":    data.Name,
-		})
-	var shopId int
-	err = row.Scan(&shopId)
-	if err != nil {
-		return handlePgxError(err)
-	}
-
-	err = s.setShopPaymentMethods(ctx, tx, shopId, data.PaymentMethods)
-	if err != nil {
-		return handlePgxError(err)
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return handlePgxError(err)
-	}
-
-	return nil
+		err = q.setShopPaymentMethods(ctx, shopId, data.PaymentMethods)
+		if err != nil {
+			return handlePgxError(err)
+		}
+		return nil
+	})
 }
 
-func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]models.ShopOverview, error) {
-	rows, err := s.pool.Query(ctx,
+func (q *PgxQueries) GetShops(ctx context.Context, limit int, offset int) ([]models.ShopOverview, error) {
+	rows, err := q.tx.Query(ctx,
 		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
     GROUP BY shops.id
@@ -62,8 +52,8 @@ func (s *PgxStore) GetShops(ctx context.Context, limit int, offset int) ([]model
 
 }
 
-func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]models.ShopOverview, error) {
-	rows, err := s.pool.Query(ctx,
+func (q *PgxQueries) GetShopsByUserId(ctx context.Context, userId string) ([]models.ShopOverview, error) {
+	rows, err := q.tx.Query(ctx,
 		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
     WHERE shops.owner_id = @userId
@@ -84,8 +74,8 @@ func (s *PgxStore) GetShopsByUserId(ctx context.Context, userId string) ([]model
 
 }
 
-func (s *PgxStore) GetShopById(ctx context.Context, shopId int) (models.Shop, error) {
-	row, err := s.pool.Query(ctx,
+func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (models.Shop, error) {
+	row, err := q.tx.Query(ctx,
 		`SELECT shops.*, 
       array_remove(array_agg(payment_methods.method), NULL) as payment_methods,
       (SELECT COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
@@ -109,41 +99,30 @@ func (s *PgxStore) GetShopById(ctx context.Context, shopId int) (models.Shop, er
 	}
 
 	return shop, nil
-
 }
 
-func (s *PgxStore) UpdateShop(ctx context.Context, shopId int, data *models.ShopUpdate) error {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return handlePgxError(err)
-	}
-	defer tx.Rollback(ctx)
+func (q *PgxQueries) UpdateShop(ctx context.Context, shopId int, data *models.ShopUpdate) error {
+	return q.WithTx(ctx, func(q *PgxQueries) error {
+		_, err := q.tx.Exec(ctx,
+			`UPDATE shops SET name = @name WHERE shops.id = @shopId`,
+			pgx.NamedArgs{
+				"name":   data.Name,
+				"shopId": shopId,
+			})
+		if err != nil {
+			return handlePgxError(err)
+		}
 
-	_, err = tx.Exec(ctx,
-		`UPDATE shops SET name = @name WHERE shops.id = @shopId`,
-		pgx.NamedArgs{
-			"name":   data.Name,
-			"shopId": shopId,
-		})
-	if err != nil {
-		return handlePgxError(err)
-	}
-
-	err = s.setShopPaymentMethods(ctx, tx, shopId, data.PaymentMethods)
-	if err != nil {
-		return handlePgxError(err)
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return handlePgxError(err)
-	}
-
-	return nil
+		err = q.setShopPaymentMethods(ctx, shopId, data.PaymentMethods)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
-func (s *PgxStore) DeleteShop(ctx context.Context, shopId int) error {
-	_, err := s.pool.Exec(ctx,
+func (q *PgxQueries) DeleteShop(ctx context.Context, shopId int) error {
+	_, err := q.tx.Exec(ctx,
 		`DELETE FROM shops WHERE shops.id = @shopId`,
 		pgx.NamedArgs{
 			"shopId": shopId,
@@ -154,27 +133,27 @@ func (s *PgxStore) DeleteShop(ctx context.Context, shopId int) error {
 	return nil
 }
 
-func (s *PgxStore) setShopPaymentMethods(ctx context.Context, tx pgx.Tx, shopId int, methods []string) error {
-	_, err := tx.Exec(ctx, `
+func (q *PgxQueries) setShopPaymentMethods(ctx context.Context, shopId int, methods []string) error {
+	_, err := q.tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_payment_methods (LIKE payment_methods INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_payment_methods"}, []string{"shop_id", "method"}, pgx.CopyFromSlice(len(methods), func(i int) ([]any, error) {
+	_, err = q.tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_payment_methods"}, []string{"shop_id", "method"}, pgx.CopyFromSlice(len(methods), func(i int) ([]any, error) {
 		return []any{shopId, methods[i]}, nil
 	}))
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx, `
+	_, err = q.tx.Exec(ctx, `
     INSERT INTO payment_methods SELECT * FROM _temp_upsert_payment_methods ON CONFLICT DO NOTHING`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx,
+	_, err = q.tx.Exec(ctx,
 		`DELETE FROM payment_methods AS p WHERE p.shop_id = @shopId AND NOT (p.method = ANY (@methods))`,
 		pgx.NamedArgs{
 			"shopId":  shopId,

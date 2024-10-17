@@ -27,14 +27,16 @@ func NewHandler(store *db.PgxStore, sessions *sessions.Handler, handleError serv
 	}
 }
 
-func (h *Handler) CreateUser(context context.Context, data *models.UserCreate) (*models.User, error) {
+func (h *Handler) CreateUser(ctx context.Context, data *models.UserCreate) (*models.User, error) {
 	h.logger.Debug("Creating user", "id", data.Id)
 	err := models.ValidateData(data, h.logger)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := h.store.CreateUser(context, data)
+	user, err := db.WithTxRet(ctx, h.store, func(q *db.PgxQueries) (*models.User, error) {
+		return q.CreateUser(ctx, data)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -43,13 +45,15 @@ func (h *Handler) CreateUser(context context.Context, data *models.UserCreate) (
 	return user, nil
 }
 
-func (h *Handler) GetUser(context context.Context, session *sessions.Session) (*models.User, error) {
+func (h *Handler) GetUser(ctx context.Context, session *sessions.Session) (*models.User, error) {
 	userId, err := session.GetUserId()
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := h.store.GetUser(context, userId)
+	user, err := db.WithTxRet(ctx, h.store, func(q *db.PgxQueries) (*models.User, error) {
+		return q.GetUser(ctx, userId)
+	})
 	if err != nil {
 		h.logger.Error("Failed to get user from database", "userId", userId, "err", err)
 		return nil, err
@@ -58,7 +62,7 @@ func (h *Handler) GetUser(context context.Context, session *sessions.Session) (*
 
 }
 
-func (h *Handler) UpdateUser(context context.Context, session *sessions.Session, userId string, data *models.UserUpdate) error {
+func (h *Handler) UpdateUser(ctx context.Context, session *sessions.Session, userId string, data *models.UserUpdate) error {
 	err := h.authorizeModifyUser(session, userId)
 	if err != nil {
 		return err
@@ -71,7 +75,9 @@ func (h *Handler) UpdateUser(context context.Context, session *sessions.Session,
 		return err
 	}
 
-	err = h.store.UpdateUser(context, userId, data)
+	err = db.WithTx(ctx, h.store, func(q *db.PgxQueries) error {
+		return q.UpdateUser(ctx, userId, data)
+	})
 	if err != nil {
 		h.logger.Error("Error updating user", "id", userId, "error", err)
 		return err

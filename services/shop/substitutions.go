@@ -3,68 +3,51 @@ package shop
 import (
 	"context"
 
+	"github.com/WilliamTrojniak/TabAppBackend/db"
 	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 )
 
 func (h *Handler) CreateSubstitutionGroup(ctx context.Context, session *sessions.Session, data *models.SubstitutionGroupCreate) error {
-	err := h.AuthorizeModifyShop(ctx, session, data.ShopId)
-	if err != nil {
-		return err
-	}
+	return h.WithAuthorizeModifyShop(ctx, session, data.ShopId, func(pq *db.PgxQueries) error {
+		err := models.ValidateData(data, h.logger)
+		if err != nil {
+			return err
+		}
 
-	err = models.ValidateData(data, h.logger)
-	if err != nil {
-		return err
-	}
+		err = pq.CreateSubstitutionGroup(ctx, data)
+		if err != nil {
+			return err
+		}
 
-	err = h.store.CreateSubstitutionGroup(ctx, data)
-	if err != nil {
-		return err
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func (h *Handler) UpdateSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId int, substitutionGroupId int, data *models.SubstitutionGroupUpdate) error {
-	err := h.AuthorizeModifyShop(ctx, session, shopId)
-	if err != nil {
-		return err
-	}
+	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+		err := models.ValidateData(data, h.logger)
+		if err != nil {
+			return err
+		}
 
-	err = models.ValidateData(data, h.logger)
-	if err != nil {
-		return err
-	}
+		err = pq.UpdateSubstitutionGroup(ctx, shopId, substitutionGroupId, data)
+		if err != nil {
+			return err
+		}
 
-	err = h.store.UpdateSubstitutionGroup(ctx, shopId, substitutionGroupId, data)
-	if err != nil {
-		return err
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func (h *Handler) GetSubstitutionGroups(ctx context.Context, shopId int) ([]models.SubstitutionGroup, error) {
-	groups, err := h.store.GetSubstitutionGroups(ctx, shopId)
-	if err != nil {
-		return nil, err
-	}
-
-	return groups, err
-
+	return db.WithTxRet(ctx, h.store, func(pq *db.PgxQueries) ([]models.SubstitutionGroup, error) {
+		return pq.GetSubstitutionGroups(ctx, shopId)
+	})
 }
 
 func (h *Handler) DeleteSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId int, substitutionGroupId int) error {
-	err := h.AuthorizeModifyShop(ctx, session, shopId)
-	if err != nil {
-		return err
-	}
-
-	err = h.store.DeleteSubstitutionGroup(ctx, shopId, substitutionGroupId)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+		return pq.DeleteSubstitutionGroup(ctx, shopId, substitutionGroupId)
+	})
 }

@@ -45,7 +45,9 @@ func (h *Handler) CreateShop(ctx context.Context, session *sessions.Session, dat
 		return services.NewUnauthorizedServiceError(errors.New("Attempted to create shop for another user"))
 	}
 
-	err = h.store.CreateShop(ctx, data)
+	err = db.WithTx(ctx, h.store, func(pq *db.PgxQueries) error {
+		return pq.CreateShop(ctx, data)
+	})
 	if err != nil {
 		return err
 	}
@@ -54,7 +56,9 @@ func (h *Handler) CreateShop(ctx context.Context, session *sessions.Session, dat
 }
 
 func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]models.ShopOverview, error) {
-	shops, err := h.store.GetShops(ctx, limit, offset)
+	shops, err := db.WithTxRet(ctx, h.store, func(pq *db.PgxQueries) ([]models.ShopOverview, error) {
+		return pq.GetShops(ctx, limit, offset)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +67,9 @@ func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]models
 }
 
 func (h *Handler) GetShopsByUserId(ctx context.Context, userId string) ([]models.ShopOverview, error) {
-	shops, err := h.store.GetShopsByUserId(ctx, userId)
+	shops, err := db.WithTxRet(ctx, h.store, func(pq *db.PgxQueries) ([]models.ShopOverview, error) {
+		return pq.GetShopsByUserId(ctx, userId)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +77,9 @@ func (h *Handler) GetShopsByUserId(ctx context.Context, userId string) ([]models
 }
 
 func (h *Handler) GetShopById(ctx context.Context, shopId int) (models.Shop, error) {
-	shop, err := h.store.GetShopById(ctx, shopId)
+	shop, err := db.WithTxRet(ctx, h.store, func(pq *db.PgxQueries) (models.Shop, error) {
+		return pq.GetShopById(ctx, shopId)
+	})
 	if err != nil {
 		return models.Shop{}, err
 	}
@@ -79,55 +87,56 @@ func (h *Handler) GetShopById(ctx context.Context, shopId int) (models.Shop, err
 }
 
 func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, shopId int, data *models.ShopUpdate) error {
-	err := h.AuthorizeModifyShop(ctx, session, shopId)
-	if err != nil {
-		return err
-	}
+	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+		h.logger.Debug("Updating Shop", "id", shopId)
 
-	h.logger.Debug("Updating Shop", "id", shopId)
-	err = models.ValidateData(data, h.logger)
-	if err != nil {
-		return err
-	}
+		err := models.ValidateData(data, h.logger)
+		if err != nil {
+			return err
+		}
 
-	err = h.store.UpdateShop(ctx, shopId, data)
-	if err != nil {
-		h.logger.Debug("Error Updating Shop", "id", shopId, "error", err)
-		return err
-	}
-	h.logger.Debug("Updated Shop", "id", shopId)
+		err = db.WithTx(ctx, h.store, func(pq *db.PgxQueries) error {
+			return pq.UpdateShop(ctx, shopId, data)
+		})
+		if err != nil {
+			h.logger.Debug("Error Updating Shop", "id", shopId, "error", err)
+			return err
+		}
 
-	return nil
+		h.logger.Debug("Updated Shop", "id", shopId)
+		return nil
+	})
 }
 
 func (h *Handler) DeleteShop(ctx context.Context, session *sessions.Session, shopId int) error {
-	err := h.AuthorizeModifyShop(ctx, session, shopId)
-	if err != nil {
-		return err
-	}
-
-	err = h.store.DeleteShop(ctx, shopId)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+		return db.WithTx(ctx, h.store, func(pq *db.PgxQueries) error {
+			return pq.DeleteShop(ctx, shopId)
+		})
+	})
 }
 
-func (h *Handler) AuthorizeModifyShop(ctx context.Context, session *sessions.Session, targetShopId int) error {
+func (h *Handler) AuthorizeModifyShop(ctx context.Context, session *sessions.Session, targetShopId int, pq *db.PgxQueries) error {
 	userId, err := session.GetUserId()
 	if err != nil {
 		return err
 	}
-
-	shop, err := h.store.GetShopById(ctx, targetShopId)
+	shop, err := pq.GetShopById(ctx, targetShopId)
 	if err != nil {
 		return err
 	}
-
 	if shop.OwnerId != userId {
 		return services.NewUnauthorizedServiceError(errors.New("Unauthorized"))
 	}
-
 	return nil
+}
+
+func (h *Handler) WithAuthorizeModifyShop(ctx context.Context, session *sessions.Session, targetShopId int, fn func(*db.PgxQueries) error) error {
+	return db.WithTx(ctx, h.store, func(pq *db.PgxQueries) error {
+		err := h.AuthorizeModifyShop(ctx, session, targetShopId, pq)
+		if err != nil {
+			return err
+		}
+		return fn(pq)
+	})
 }

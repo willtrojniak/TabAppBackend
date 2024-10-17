@@ -8,51 +8,42 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgxStore) CreateItem(ctx context.Context, data *models.ItemCreate) error {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return handlePgxError(err)
-	}
+func (q *PgxQueries) CreateItem(ctx context.Context, data *models.ItemCreate) error {
+	return q.WithTx(ctx, func(q *PgxQueries) error {
+		row := q.tx.QueryRow(ctx,
+			`INSERT INTO items (shop_id, name, base_price) VALUES (@shopId, @name, @basePrice) RETURNING id`,
+			pgx.NamedArgs{
+				"shopId":    data.ShopId,
+				"name":      data.Name,
+				"basePrice": data.BasePrice,
+			})
+		var itemId int
+		err := row.Scan(&itemId)
+		if err != nil {
+			return handlePgxError(err)
+		}
 
-	defer tx.Rollback(ctx)
-	row := tx.QueryRow(ctx,
-		`INSERT INTO items (shop_id, name, base_price) VALUES (@shopId, @name, @basePrice) RETURNING id`,
-		pgx.NamedArgs{
-			"shopId":    data.ShopId,
-			"name":      data.Name,
-			"basePrice": data.BasePrice,
-		})
-	var itemId int
-	err = row.Scan(&itemId)
-	if err != nil {
-		return handlePgxError(err)
-	}
+		err = q.setItemCategories(ctx, data.ShopId, itemId, data.CategoryIds)
+		if err != nil {
+			return err
+		}
 
-	err = s.setItemCategories(ctx, tx, data.ShopId, itemId, data.CategoryIds)
-	if err != nil {
-		return err
-	}
+		err = q.setItemAddons(ctx, data.ShopId, itemId, data.AddonIds)
+		if err != nil {
+			return err
+		}
 
-	err = s.setItemAddons(ctx, tx, data.ShopId, itemId, data.AddonIds)
-	if err != nil {
-		return err
-	}
+		err = q.setItemSubstitutionGroups(ctx, data.ShopId, itemId, data.SubstitutionGroupIds)
+		if err != nil {
+			return err
+		}
 
-	err = s.setItemSubstitutionGroups(ctx, tx, data.ShopId, itemId, data.SubstitutionGroupIds)
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return handlePgxError(err)
-	}
-
-	return nil
+		return nil
+	})
 }
 
-func (s *PgxStore) GetItems(ctx context.Context, shopId int) ([]models.ItemOverview, error) {
-	rows, err := s.pool.Query(ctx, `
+func (q *PgxQueries) GetItems(ctx context.Context, shopId int) ([]models.ItemOverview, error) {
+	rows, err := q.tx.Query(ctx, `
     SELECT items.base_price, items.name, items.id
     FROM items
     WHERE items.shop_id = @shopId`,
@@ -73,8 +64,8 @@ func (s *PgxStore) GetItems(ctx context.Context, shopId int) ([]models.ItemOverv
 
 }
 
-func (s *PgxStore) GetItem(ctx context.Context, shopId int, itemId int) (models.Item, error) {
-	rows, err := s.pool.Query(ctx, `
+func (q *PgxQueries) GetItem(ctx context.Context, shopId int, itemId int) (models.Item, error) {
+	rows, err := q.tx.Query(ctx, `
     SELECT items.id, items.name, items.base_price,
       (SELECT COALESCE(json_agg(item_categories ORDER BY item_categories.name) FILTER (WHERE item_categories.id IS NOT NULL), '[]')
        FROM items_to_categories
@@ -128,56 +119,47 @@ func (s *PgxStore) GetItem(ctx context.Context, shopId int, itemId int) (models.
 
 }
 
-func (s *PgxStore) UpdateItem(ctx context.Context, shopId int, itemId int, data *models.ItemUpdate) error {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return handlePgxError(err)
-	}
-
-	defer tx.Rollback(ctx)
-	result, err := tx.Exec(ctx, `
+func (q *PgxQueries) UpdateItem(ctx context.Context, shopId int, itemId int, data *models.ItemUpdate) error {
+	return q.WithTx(ctx, func(q *PgxQueries) error {
+		result, err := q.tx.Exec(ctx, `
     UPDATE items SET name = @name, base_price = @base_price
     WHERE shop_id = @shopId AND id = @itemId`,
-		pgx.NamedArgs{
-			"name":       data.Name,
-			"base_price": data.BasePrice,
-			"shopId":     shopId,
-			"itemId":     itemId,
-		})
+			pgx.NamedArgs{
+				"name":       data.Name,
+				"base_price": data.BasePrice,
+				"shopId":     shopId,
+				"itemId":     itemId,
+			})
 
-	if err != nil {
-		return handlePgxError(err)
-	}
+		if err != nil {
+			return handlePgxError(err)
+		}
 
-	if result.RowsAffected() == 0 {
-		return services.NewNotFoundServiceError(nil)
-	}
+		if result.RowsAffected() == 0 {
+			return services.NewNotFoundServiceError(nil)
+		}
 
-	err = s.setItemCategories(ctx, tx, shopId, itemId, data.CategoryIds)
-	if err != nil {
-		return err
-	}
+		err = q.setItemCategories(ctx, shopId, itemId, data.CategoryIds)
+		if err != nil {
+			return err
+		}
 
-	err = s.setItemAddons(ctx, tx, shopId, itemId, data.AddonIds)
-	if err != nil {
-		return err
-	}
+		err = q.setItemAddons(ctx, shopId, itemId, data.AddonIds)
+		if err != nil {
+			return err
+		}
 
-	err = s.setItemSubstitutionGroups(ctx, tx, shopId, itemId, data.SubstitutionGroupIds)
-	if err != nil {
-		return err
-	}
+		err = q.setItemSubstitutionGroups(ctx, shopId, itemId, data.SubstitutionGroupIds)
+		if err != nil {
+			return err
+		}
 
-	err = tx.Commit(ctx)
-	if err != nil {
-		return handlePgxError(err)
-	}
-
-	return nil
+		return nil
+	})
 }
 
-func (s *PgxStore) DeleteItem(ctx context.Context, shopId int, itemId int) error {
-	result, err := s.pool.Exec(ctx, `
+func (q *PgxQueries) DeleteItem(ctx context.Context, shopId int, itemId int) error {
+	result, err := q.tx.Exec(ctx, `
     DELETE FROM items 
     WHERE shop_id = @shopId AND id = @itemId`,
 		pgx.NamedArgs{
@@ -195,8 +177,8 @@ func (s *PgxStore) DeleteItem(ctx context.Context, shopId int, itemId int) error
 	return nil
 }
 
-func (s *PgxStore) CreateItemVariant(ctx context.Context, data *models.ItemVariantCreate) error {
-	_, err := s.pool.Exec(ctx, `
+func (q *PgxQueries) CreateItemVariant(ctx context.Context, data *models.ItemVariantCreate) error {
+	_, err := q.tx.Exec(ctx, `
     INSERT INTO item_variants (shop_id, item_id, name, price, index) VALUES (@shopId, @itemId, @name, @price, @index)`,
 		pgx.NamedArgs{
 			"shopId": data.ShopId,
@@ -213,8 +195,8 @@ func (s *PgxStore) CreateItemVariant(ctx context.Context, data *models.ItemVaria
 	return nil
 }
 
-func (s *PgxStore) UpdateItemVariant(ctx context.Context, shopId int, itemId int, variantId int, data *models.ItemVariantUpdate) error {
-	result, err := s.pool.Exec(ctx, `
+func (q *PgxQueries) UpdateItemVariant(ctx context.Context, shopId int, itemId int, variantId int, data *models.ItemVariantUpdate) error {
+	result, err := q.tx.Exec(ctx, `
     UPDATE item_variants SET (name, price, index) = (@name, @price, @index)
     WHERE id = @id AND item_id = @itemId AND shop_id = @shopId`,
 		pgx.NamedArgs{
@@ -237,8 +219,8 @@ func (s *PgxStore) UpdateItemVariant(ctx context.Context, shopId int, itemId int
 	return nil
 }
 
-func (s *PgxStore) DeleteItemVariant(ctx context.Context, shopId int, itemId int, variantId int) error {
-	result, err := s.pool.Exec(ctx, `
+func (q *PgxQueries) DeleteItemVariant(ctx context.Context, shopId int, itemId int, variantId int) error {
+	result, err := q.tx.Exec(ctx, `
     DELETE FROM item_variants 
     WHERE id = @id AND item_id = @itemId AND shop_id = @shopId`,
 		pgx.NamedArgs{
@@ -258,27 +240,27 @@ func (s *PgxStore) DeleteItemVariant(ctx context.Context, shopId int, itemId int
 	return nil
 }
 
-func (s *PgxStore) setItemCategories(ctx context.Context, tx pgx.Tx, shopId int, itemId int, categoryIds []int) error {
-	_, err := tx.Exec(ctx, `
+func (q *PgxQueries) setItemCategories(ctx context.Context, shopId int, itemId int, categoryIds []int) error {
+	_, err := q.tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_items_to_categories (LIKE items_to_categories INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_items_to_categories"}, []string{"shop_id", "item_id", "item_category_id", "index"}, pgx.CopyFromSlice(len(categoryIds), func(i int) ([]any, error) {
+	_, err = q.tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_items_to_categories"}, []string{"shop_id", "item_id", "item_category_id", "index"}, pgx.CopyFromSlice(len(categoryIds), func(i int) ([]any, error) {
 		return []any{shopId, itemId, categoryIds[i], 0}, nil
 	}))
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx, `
+	_, err = q.tx.Exec(ctx, `
     INSERT INTO items_to_categories SELECT * FROM _temp_upsert_items_to_categories ON CONFLICT DO NOTHING`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx,
+	_, err = q.tx.Exec(ctx,
 		`DELETE FROM items_to_categories WHERE shop_id = @shopId AND item_id = @itemId AND NOT (item_category_id = ANY (@categories))`,
 		pgx.NamedArgs{
 			"shopId":     shopId,
@@ -292,28 +274,28 @@ func (s *PgxStore) setItemCategories(ctx context.Context, tx pgx.Tx, shopId int,
 	return nil
 }
 
-func (s *PgxStore) setCategoryItems(ctx context.Context, tx pgx.Tx, shopId int, categoryId int, itemIds []int) error {
-	_, err := tx.Exec(ctx, `
+func (q *PgxQueries) setCategoryItems(ctx context.Context, shopId int, categoryId int, itemIds []int) error {
+	_, err := q.tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_items_to_categories (LIKE items_to_categories INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_items_to_categories"}, []string{"shop_id", "item_id", "item_category_id", "index"}, pgx.CopyFromSlice(len(itemIds), func(i int) ([]any, error) {
+	_, err = q.tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_items_to_categories"}, []string{"shop_id", "item_id", "item_category_id", "index"}, pgx.CopyFromSlice(len(itemIds), func(i int) ([]any, error) {
 		return []any{shopId, itemIds[i], categoryId, i}, nil
 	}))
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx, `
+	_, err = q.tx.Exec(ctx, `
     INSERT INTO items_to_categories SELECT * FROM _temp_upsert_items_to_categories ON CONFLICT (shop_id, item_id, item_category_id) DO UPDATE
     SET index = excluded.index`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx,
+	_, err = q.tx.Exec(ctx,
 		`DELETE FROM items_to_categories WHERE shop_id = @shopId AND item_category_id = @categoryId AND NOT (item_id = ANY (@itemIds))`,
 		pgx.NamedArgs{
 			"shopId":     shopId,
@@ -327,28 +309,28 @@ func (s *PgxStore) setCategoryItems(ctx context.Context, tx pgx.Tx, shopId int, 
 	return nil
 }
 
-func (s *PgxStore) setItemAddons(ctx context.Context, tx pgx.Tx, shopId int, itemId int, addonItemIds []int) error {
-	_, err := tx.Exec(ctx, `
+func (q *PgxQueries) setItemAddons(ctx context.Context, shopId int, itemId int, addonItemIds []int) error {
+	_, err := q.tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_item_addons (LIKE item_addons INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_item_addons"}, []string{"shop_id", "item_id", "addon_id", "index"}, pgx.CopyFromSlice(len(addonItemIds), func(i int) ([]any, error) {
+	_, err = q.tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_item_addons"}, []string{"shop_id", "item_id", "addon_id", "index"}, pgx.CopyFromSlice(len(addonItemIds), func(i int) ([]any, error) {
 		return []any{shopId, itemId, addonItemIds[i], i}, nil
 	}))
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx, `
+	_, err = q.tx.Exec(ctx, `
     INSERT INTO item_addons SELECT * FROM _temp_upsert_item_addons ON CONFLICT (shop_id, item_id, addon_id) DO UPDATE
     SET index = excluded.index`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx,
+	_, err = q.tx.Exec(ctx,
 		`DELETE FROM item_addons WHERE item_id = @itemId AND shop_id = @shopId AND NOT (addon_id = ANY (@addonItemIds))`,
 		pgx.NamedArgs{
 			"shopId":       shopId,
@@ -362,14 +344,14 @@ func (s *PgxStore) setItemAddons(ctx context.Context, tx pgx.Tx, shopId int, ite
 	return nil
 }
 
-func (s *PgxStore) setItemSubstitutionGroups(ctx context.Context, tx pgx.Tx, shopId int, itemId int, substitutionGroupIds []int) error {
-	_, err := tx.Exec(ctx, `
+func (q *PgxQueries) setItemSubstitutionGroups(ctx context.Context, shopId int, itemId int, substitutionGroupIds []int) error {
+	_, err := q.tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_items_to_item_substitution_groups (LIKE items_to_item_substitution_groups INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_items_to_item_substitution_groups"},
+	_, err = q.tx.CopyFrom(ctx, pgx.Identifier{"_temp_upsert_items_to_item_substitution_groups"},
 		[]string{"shop_id", "substitution_group_id", "item_id", "index"}, pgx.CopyFromSlice(len(substitutionGroupIds), func(i int) ([]any, error) {
 			return []any{shopId, substitutionGroupIds[i], itemId, i}, nil
 		}))
@@ -377,14 +359,14 @@ func (s *PgxStore) setItemSubstitutionGroups(ctx context.Context, tx pgx.Tx, sho
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx, `
+	_, err = q.tx.Exec(ctx, `
     INSERT INTO items_to_item_substitution_groups SELECT * FROM _temp_upsert_items_to_item_substitution_groups ON CONFLICT (shop_id, substitution_group_id, item_id) DO UPDATE
     SET index = excluded.index`)
 	if err != nil {
 		return handlePgxError(err)
 	}
 
-	_, err = tx.Exec(ctx,
+	_, err = q.tx.Exec(ctx,
 		`DELETE FROM items_to_item_substitution_groups WHERE item_id = @itemId AND shop_id = @shopId AND NOT (substitution_group_id = ANY (@substitutionGroupIds))`,
 		pgx.NamedArgs{
 			"shopId":               shopId,

@@ -12,6 +12,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type PgxConn interface {
+	Begin(ctx context.Context) (*PgxQueries, error)
+}
+
 type PgxStore struct {
 	pool *pgxpool.Pool
 }
@@ -27,6 +31,68 @@ func NewPostgresStorage(ctx context.Context, config *pgxpool.Config) (*PgxStore,
 	}
 
 	return pg, nil
+}
+
+func (s *PgxStore) Begin(ctx context.Context) (*PgxQueries, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, handlePgxError(err)
+	}
+	return &PgxQueries{tx: tx}, nil
+}
+
+type PgxQueries struct {
+	tx pgx.Tx
+}
+
+func (q *PgxQueries) Begin(ctx context.Context) (*PgxQueries, error) {
+	tx, err := q.tx.Begin(ctx)
+	if err != nil {
+		return nil, handlePgxError(err)
+	}
+	return &PgxQueries{tx: tx}, nil
+}
+
+func (q *PgxQueries) Rollback(ctx context.Context) error {
+	return q.tx.Rollback(ctx)
+}
+
+func (q *PgxQueries) Commit(ctx context.Context) error {
+	return q.tx.Commit(ctx)
+}
+
+func (q *PgxQueries) WithTx(ctx context.Context, fn func(*PgxQueries) error) error {
+	return WithTx(ctx, q, fn)
+}
+
+func WithTx(ctx context.Context, conn PgxConn, fn func(*PgxQueries) error) error {
+	q, err := conn.Begin(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+	defer q.Rollback(ctx)
+	err = fn(q)
+
+	err = q.Commit(ctx)
+	if err != nil {
+		return handlePgxError(err)
+	}
+	return nil
+}
+
+func WithTxRet[T any](ctx context.Context, conn PgxConn, fn func(*PgxQueries) (T, error)) (T, error) {
+	q, err := conn.Begin(ctx)
+	if err != nil {
+		return *new(T), handlePgxError(err)
+	}
+	defer q.Rollback(ctx)
+	val, err := fn(q)
+
+	err = q.Commit(ctx)
+	if err != nil {
+		return *new(T), handlePgxError(err)
+	}
+	return val, nil
 }
 
 func handlePgxError(err error) error {
