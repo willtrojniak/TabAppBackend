@@ -72,6 +72,9 @@ func WithTx(ctx context.Context, conn PgxConn, fn func(*PgxQueries) error) error
 	}
 	defer q.Rollback(ctx)
 	err = fn(q)
+	if err != nil {
+		return err
+	}
 
 	err = q.Commit(ctx)
 	if err != nil {
@@ -87,6 +90,9 @@ func WithTxRet[T any](ctx context.Context, conn PgxConn, fn func(*PgxQueries) (T
 	}
 	defer q.Rollback(ctx)
 	val, err := fn(q)
+	if err != nil {
+		return *new(T), err
+	}
 
 	err = q.Commit(ctx)
 	if err != nil {
