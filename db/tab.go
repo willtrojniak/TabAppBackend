@@ -345,7 +345,9 @@ func (q *PgxQueries) GetTabs(ctx context.Context, shopId int) ([]models.TabOverv
     FROM tabs
     LEFT JOIN tab_users ON tabs.shop_id = tab_users.shop_id AND tabs.id = tab_users.tab_id
     WHERE tabs.shop_id = @shopId
-    GROUP BY tabs.shop_id, tabs.id`,
+    GROUP BY tabs.shop_id, tabs.id
+    ORDER BY tabs.display_name, tabs.start_date, tabs.end_date 
+    `,
 		pgx.NamedArgs{
 			"shopId": shopId,
 		})
