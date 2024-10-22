@@ -9,7 +9,7 @@ import (
 )
 
 func (h *Handler) CreateCategory(ctx context.Context, session *sessions.Session, data *models.CategoryCreate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, data.ShopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, data.ShopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		err := models.ValidateData(data, h.logger)
 		if err != nil {
 			return err
@@ -31,7 +31,7 @@ func (h *Handler) GetCategories(ctx context.Context, shopId int) ([]models.Categ
 }
 
 func (h *Handler) UpdateCategory(ctx context.Context, session *sessions.Session, shopId int, categoryId int, data *models.CategoryUpdate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		err := models.ValidateData(data, h.logger)
 		if err != nil {
 			return err
@@ -49,7 +49,7 @@ func (h *Handler) UpdateCategory(ctx context.Context, session *sessions.Session,
 }
 
 func (h *Handler) DeleteCategory(ctx context.Context, session *sessions.Session, shopId int, categoryId int) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		h.logger.Debug("Deleting category", "shopId", shopId, "categoryId", categoryId)
 
 		err := pq.DeleteCategory(ctx, shopId, categoryId)

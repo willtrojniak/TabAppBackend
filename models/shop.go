@@ -13,7 +13,7 @@ type ShopUpdate struct {
 }
 
 type ShopCreate struct {
-	OwnerId string `json:"owner_id" db:"owner_id" validate:"required,max=255"`
+	OwnerId string `json:"-" db:"owner_id" validate:"required,max=255"`
 	ShopUpdate
 }
 
@@ -25,6 +25,19 @@ type ShopOverview struct {
 type Shop struct {
 	ShopOverview
 	Locations []Location `json:"locations" db:"locations"`
+}
+
+type GetShopsQueryParams struct {
+	Limit     int
+	Offset    int
+	IsMember  *bool
+	UserId    *string
+	IsPending *bool
+}
+
+type ShopUserCreate struct {
+	Email string `json:"email" db:"email" validate:"required,email,max=64"`
+	Roles uint32 `json:"roles" db:"roles" validate:"required,gte=1"`
 }
 
 type LocationUpdate struct {

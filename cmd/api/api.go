@@ -37,15 +37,14 @@ func NewAPIServer(addr string, store *db.PgxStore, cache *redis.Client) *APIServ
 func (s *APIServer) Run() error {
 	sessionStore := cache.NewRedisCache(s.cache)
 	sessionManager := sessions.New(sessionStore, time.Hour*24*30, time.Hour*1, services.HandleHttpError, slog.Default())
+	userHandler := user.NewHandler(s.store, sessionManager, services.HandleHttpError, slog.Default())
 
-	authHandler, err := auth.NewHandler(services.HandleHttpError, sessionManager, slog.Default())
+	authHandler, err := auth.NewHandler(services.HandleHttpError, sessionManager, userHandler, slog.Default())
 	if err != nil {
 		log.Fatal("Failed to initialize auth handler")
 	}
-	userHandler := user.NewHandler(s.store, sessionManager, services.HandleHttpError, slog.Default())
-	authHandler.SetCreateUserFn(userHandler.CreateUser)
 
-	shopHandler := shop.NewHandler(s.store, sessionManager, services.HandleHttpError, slog.Default())
+	shopHandler := shop.NewHandler(s.store, sessionManager, userHandler, services.HandleHttpError, slog.Default())
 
 	router := http.NewServeMux()
 	v1 := http.NewServeMux()

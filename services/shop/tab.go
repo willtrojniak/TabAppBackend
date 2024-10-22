@@ -12,28 +12,21 @@ import (
 )
 
 func (h *Handler) CreateTab(ctx context.Context, session *sessions.Session, data *models.TabCreate) error {
-	// Check that the client is authenticated
-	userId, err := session.GetUserId()
-	if err != nil {
-		return err
-	}
-
 	// Request data validation
-	err = models.ValidateData(data, h.logger)
+	err := models.ValidateData(data, h.logger)
 	if err != nil {
 		return err
 	}
 
 	return db.WithTx(ctx, h.store, func(pq *db.PgxQueries) error {
-		// Get the target shop
-		shop, err := pq.GetShopById(ctx, data.ShopId)
+		userRoles, err := h.GetShopUserPermissions(ctx, session, data.ShopId)
 		if err != nil {
 			return err
 		}
 
-		// By default the tab status is pending, unless it is created by the shop owner
+		// By default the tab status is pending, unless it is created by user with role
 		status := models.TAB_STATUS_PENDING
-		if shop.OwnerId == userId {
+		if (userRoles&ROLE_USER_OWNER) == ROLE_USER_OWNER || (userRoles&ROLE_USER_MANAGE_TABS) == ROLE_USER_MANAGE_TABS {
 			status = models.TAB_STATUS_CONFIRMED
 		}
 
@@ -63,7 +56,7 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shop
 			return err
 		}
 
-		authErr := h.AuthorizeModifyShop(ctx, session, shopId, pq)
+		authErr := h.Authorize(ctx, session, shopId, ROLE_USER_MANAGE_TABS, pq)
 		if authErr != nil && userId != tab.OwnerId {
 			return authErr
 		}
@@ -103,7 +96,7 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.Session, shop
 }
 
 func (h *Handler) ApproveTab(ctx context.Context, session *sessions.Session, shopId int, tabId int) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_TABS, func(pq *db.PgxQueries) error {
 		tab, err := pq.GetTabById(ctx, shopId, tabId)
 		if err != nil {
 			return err
@@ -122,7 +115,7 @@ func (h *Handler) ApproveTab(ctx context.Context, session *sessions.Session, sho
 }
 
 func (h *Handler) CloseTab(ctx context.Context, session *sessions.Session, shopId int, tabId int) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_TABS, func(pq *db.PgxQueries) error {
 		tab, err := pq.GetTabById(ctx, shopId, tabId)
 		if err != nil {
 			return err
@@ -141,14 +134,14 @@ func (h *Handler) CloseTab(ctx context.Context, session *sessions.Session, shopI
 }
 
 func (h *Handler) MarkTabBillPaid(ctx context.Context, session *sessions.Session, shopId int, tabId int, billId int) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ORDERS, func(pq *db.PgxQueries) error {
 		return pq.MarkTabBillPaid(ctx, shopId, tabId, billId)
 	})
 }
 
 func (h *Handler) GetTabs(ctx context.Context, session *sessions.Session, shopId int) ([]models.TabOverview, error) {
 	var tabs []models.TabOverview = nil
-	err := h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	err := h.WithAuthorize(ctx, session, shopId, ROLE_USER_READ_TABS, func(pq *db.PgxQueries) error {
 		var err error
 		tabs, err = pq.GetTabs(ctx, shopId)
 		return err
@@ -158,7 +151,7 @@ func (h *Handler) GetTabs(ctx context.Context, session *sessions.Session, shopId
 
 func (h *Handler) GetTabById(ctx context.Context, session *sessions.Session, shopId int, tabId int) (models.Tab, error) {
 	var tab models.Tab
-	err := h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	err := h.WithAuthorize(ctx, session, shopId, ROLE_USER_READ_TABS, func(pq *db.PgxQueries) error {
 		var err error
 		tab, err = pq.GetTabById(ctx, shopId, tabId)
 		return err
@@ -167,7 +160,7 @@ func (h *Handler) GetTabById(ctx context.Context, session *sessions.Session, sho
 }
 
 func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.Session, shopId int, tabId int, data *models.BillOrderCreate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ORDERS, func(pq *db.PgxQueries) error {
 		err := models.ValidateData(data, h.logger)
 		if err != nil {
 			return err
@@ -192,7 +185,7 @@ func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.Session, 
 }
 
 func (h *Handler) RemoveOrderFromTab(ctx context.Context, session *sessions.Session, shopId int, tabId int, data *models.BillOrderCreate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ORDERS, func(pq *db.PgxQueries) error {
 		err := models.ValidateData(data, h.logger)
 		if err != nil {
 			return err

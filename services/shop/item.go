@@ -10,7 +10,7 @@ import (
 )
 
 func (h *Handler) CreateItem(ctx context.Context, session *sessions.Session, data *models.ItemCreate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, data.ShopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, data.ShopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		err := models.ValidateData(data, h.logger)
 		if err != nil {
 			return err
@@ -33,7 +33,7 @@ func (h *Handler) GetItems(ctx context.Context, shopId int) ([]models.ItemOvervi
 }
 
 func (h *Handler) UpdateItem(ctx context.Context, session *sessions.Session, shopId int, itemId int, data *models.ItemUpdate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		err := models.ValidateData(data, h.logger)
 		if err != nil {
 			return err
@@ -57,7 +57,7 @@ func (h *Handler) GetItem(ctx context.Context, shopId int, itemId int) (models.I
 }
 
 func (h *Handler) DeleteItem(ctx context.Context, session *sessions.Session, shopId int, itemId int) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		h.logger.Debug("Deleting item", "id", itemId)
 		err := pq.DeleteItem(ctx, shopId, itemId)
 		if err != nil {
@@ -70,7 +70,7 @@ func (h *Handler) DeleteItem(ctx context.Context, session *sessions.Session, sho
 }
 
 func (h *Handler) CreateItemVariant(ctx context.Context, session *sessions.Session, data *models.ItemVariantCreate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, data.ShopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, data.ShopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		err := models.ValidateData(data, h.logger)
 		if err != nil {
 			return err
@@ -86,7 +86,7 @@ func (h *Handler) CreateItemVariant(ctx context.Context, session *sessions.Sessi
 }
 
 func (h *Handler) UpdateItemVariant(ctx context.Context, session *sessions.Session, shopId int, itemId int, variantId int, data *models.ItemVariantUpdate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		err := models.ValidateData(data, h.logger)
 		if err != nil {
 			return err
@@ -102,7 +102,7 @@ func (h *Handler) UpdateItemVariant(ctx context.Context, session *sessions.Sessi
 }
 
 func (h *Handler) DeleteItemVariant(ctx context.Context, session *sessions.Session, shopId int, itemId int, variantId int) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		err := pq.DeleteItemVariant(ctx, shopId, itemId, variantId)
 		if err != nil {
 			return err

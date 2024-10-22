@@ -9,20 +9,23 @@ import (
 	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
+	"github.com/WilliamTrojniak/TabAppBackend/services/user"
 )
 
 type Handler struct {
 	logger      *slog.Logger
 	store       *db.PgxStore
 	sessions    *sessions.Handler
+	users       *user.Handler
 	handleError services.HTTPErrorHandler
 }
 
-func NewHandler(store *db.PgxStore, sessions *sessions.Handler, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
+func NewHandler(store *db.PgxStore, sessions *sessions.Handler, userHandler *user.Handler, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
 	return &Handler{
 		logger:      logger,
 		sessions:    sessions,
 		store:       store,
+		users:       userHandler,
 		handleError: handleError,
 	}
 }
@@ -55,25 +58,17 @@ func (h *Handler) CreateShop(ctx context.Context, session *sessions.Session, dat
 	return nil
 }
 
-func (h *Handler) GetShops(ctx context.Context, limit int, offset int) ([]models.ShopOverview, error) {
-	shops, err := db.WithTxRet(ctx, h.store, func(pq *db.PgxQueries) ([]models.ShopOverview, error) {
-		return pq.GetShops(ctx, limit, offset)
-	})
-	if err != nil {
-		return nil, err
+func (h *Handler) GetShops(ctx context.Context, params *models.GetShopsQueryParams) ([]models.ShopOverview, error) {
+	if params == nil {
+		params = &models.GetShopsQueryParams{
+			Offset: 0,
+			Limit:  10,
+		}
 	}
 
-	return shops, nil
-}
-
-func (h *Handler) GetShopsByUserId(ctx context.Context, userId string) ([]models.ShopOverview, error) {
-	shops, err := db.WithTxRet(ctx, h.store, func(pq *db.PgxQueries) ([]models.ShopOverview, error) {
-		return pq.GetShopsByUserId(ctx, userId)
+	return db.WithTxRet(ctx, h.store, func(pq *db.PgxQueries) ([]models.ShopOverview, error) {
+		return pq.GetShops(ctx, params)
 	})
-	if err != nil {
-		return nil, err
-	}
-	return shops, err
 }
 
 func (h *Handler) GetShopById(ctx context.Context, shopId int) (models.Shop, error) {
@@ -87,7 +82,7 @@ func (h *Handler) GetShopById(ctx context.Context, shopId int) (models.Shop, err
 }
 
 func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, shopId int, data *models.ShopUpdate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_OWNER, func(pq *db.PgxQueries) error {
 		h.logger.Debug("Updating Shop", "id", shopId)
 
 		err := models.ValidateData(data, h.logger)
@@ -109,31 +104,29 @@ func (h *Handler) UpdateShop(ctx context.Context, session *sessions.Session, sho
 }
 
 func (h *Handler) DeleteShop(ctx context.Context, session *sessions.Session, shopId int) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_OWNER, func(pq *db.PgxQueries) error {
 		return db.WithTx(ctx, h.store, func(pq *db.PgxQueries) error {
 			return pq.DeleteShop(ctx, shopId)
 		})
 	})
 }
 
-func (h *Handler) AuthorizeModifyShop(ctx context.Context, session *sessions.Session, targetShopId int, pq *db.PgxQueries) error {
-	userId, err := session.GetUserId()
+func (h *Handler) Authorize(ctx context.Context, session *sessions.Session, targetShopId int, roles uint32, pq *db.PgxQueries) error {
+	userRoles, err := h.GetShopUserPermissions(ctx, session, targetShopId)
 	if err != nil {
 		return err
 	}
-	shop, err := pq.GetShopById(ctx, targetShopId)
-	if err != nil {
-		return err
+
+	if (userRoles&ROLE_USER_OWNER) == ROLE_USER_OWNER || (userRoles&roles) == roles {
+		return nil
 	}
-	if shop.OwnerId != userId {
-		return services.NewUnauthorizedServiceError(errors.New("Unauthorized"))
-	}
-	return nil
+
+	return services.NewUnauthorizedServiceError(errors.New("Unauthorized"))
 }
 
-func (h *Handler) WithAuthorizeModifyShop(ctx context.Context, session *sessions.Session, targetShopId int, fn func(*db.PgxQueries) error) error {
+func (h *Handler) WithAuthorize(ctx context.Context, session *sessions.Session, targetShopId int, roles uint32, fn func(*db.PgxQueries) error) error {
 	return db.WithTx(ctx, h.store, func(pq *db.PgxQueries) error {
-		err := h.AuthorizeModifyShop(ctx, session, targetShopId, pq)
+		err := h.Authorize(ctx, session, targetShopId, roles, pq)
 		if err != nil {
 			return err
 		}

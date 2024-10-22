@@ -14,6 +14,7 @@ import (
 	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
+	"github.com/WilliamTrojniak/TabAppBackend/services/user"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
@@ -23,13 +24,13 @@ type CreateUserFn func(context context.Context, user *models.UserCreate) (*model
 type Handler struct {
 	logger         *slog.Logger
 	handleError    services.HTTPErrorHandler
-	createUser     CreateUserFn
+	userHandler    *user.Handler
 	config         oauth2.Config
 	provider       *oidc.Provider
 	sessionManager *sessions.Handler
 }
 
-func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.Handler, logger *slog.Logger) (*Handler, error) {
+func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.Handler, userHandler *user.Handler, logger *slog.Logger) (*Handler, error) {
 	provider, err := oidc.NewProvider(context.TODO(), "https://accounts.google.com")
 	if err != nil {
 		return nil, err
@@ -45,14 +46,11 @@ func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.
 	return &Handler{
 		handleError:    handleError,
 		logger:         logger,
+		userHandler:    userHandler,
 		provider:       provider,
 		config:         config,
 		sessionManager: sessionManager,
 	}, nil
-}
-
-func (h *Handler) SetCreateUserFn(fn CreateUserFn) {
-	h.createUser = fn
 }
 
 func (h *Handler) beginAuthorize(w http.ResponseWriter, r *http.Request) error {
@@ -135,7 +133,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Add the user to the database if not already
-	user, err := h.createUser(r.Context(), &models.UserCreate{Id: claims.Sub, Email: claims.Email, Name: claims.Name})
+	user, err := h.userHandler.CreateUser(r.Context(), &models.UserCreate{Id: claims.Sub, Email: claims.Email, Name: claims.Name})
 	if err != nil {
 		return services.NewInternalServiceError(err)
 	}

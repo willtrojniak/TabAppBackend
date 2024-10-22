@@ -34,6 +34,12 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}", shopIdParam), h.handleUpdateShop)
 	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}", shopIdParam), h.handleDeleteShop)
 
+	// Users & Permissions
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/permissions", shopIdParam), h.handleGetShopUserPermissions)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/users/invite", shopIdParam), h.handleInviteUser)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/users/remove", shopIdParam), h.handleRemoveUser)
+	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/accept", shopIdParam), h.handleAcceptInvite)
+
 	// Locations
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/locations", shopIdParam), h.handleCreateLocation)
 	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/locations/{%v}", shopIdParam, locationIdParam), h.handleUpdateLocation)
@@ -111,24 +117,36 @@ func (h *Handler) handleCreateShop(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleGetShops(w http.ResponseWriter, r *http.Request) {
 	// Query params
-	userIdKey := "userId"
+	const memberKey = "member"
+	const pendingKey = "pending"
 
-	searchParams := r.URL.Query()
-	if searchParams.Has(userIdKey) {
-		userId := searchParams.Get(userIdKey)
-		shops, err := h.GetShopsByUserId(r.Context(), userId)
-		if err != nil {
-			h.handleError(w, err)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(shops)
-		return
-	}
+	var params models.GetShopsQueryParams
 
 	// TODO: Dynamically change limit and offset
-	shops, err := h.GetShops(r.Context(), 10, 0)
+	params.Limit = 10
+	params.Offset = 0
+
+	rawParams := r.URL.Query()
+	if rawParams.Has(memberKey) {
+		if isMember, err := strconv.ParseBool(rawParams.Get(memberKey)); err == nil {
+			emptyId := ""
+			params.IsMember = &isMember
+			params.UserId = &emptyId
+			if session, err := h.sessions.GetSession(r); err == nil {
+				if userId, err := session.GetUserId(); err == nil {
+					params.UserId = &userId
+				}
+			}
+		}
+	}
+
+	if rawParams.Has(pendingKey) {
+		if pending, err := strconv.ParseBool(rawParams.Get(pendingKey)); err == nil {
+			params.IsPending = &pending
+		}
+	}
+
+	shops, err := h.GetShops(r.Context(), &params)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -198,6 +216,102 @@ func (h *Handler) handleDeleteShop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.DeleteShop(r.Context(), session, shopId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleGetShopUserPermissions(w http.ResponseWriter, r *http.Request) {
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
+		return
+	}
+
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	roles, err := h.GetShopUserPermissions(r.Context(), session, shopId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(roles)
+}
+
+func (h *Handler) handleInviteUser(w http.ResponseWriter, r *http.Request) {
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
+		return
+	}
+
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	data := models.ShopUserCreate{}
+	err = models.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.InviteUserToShop(r.Context(), session, shopId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleRemoveUser(w http.ResponseWriter, r *http.Request) {
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
+		return
+	}
+
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	data := models.ShopUserCreate{}
+	err = models.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.RemoveInviteToShop(r.Context(), session, shopId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
+		return
+	}
+
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.AcceptInviteToShop(r.Context(), session, shopId)
 	if err != nil {
 		h.handleError(w, err)
 		return

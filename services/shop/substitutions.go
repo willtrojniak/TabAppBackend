@@ -9,7 +9,7 @@ import (
 )
 
 func (h *Handler) CreateSubstitutionGroup(ctx context.Context, session *sessions.Session, data *models.SubstitutionGroupCreate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, data.ShopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, data.ShopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		err := models.ValidateData(data, h.logger)
 		if err != nil {
 			return err
@@ -25,7 +25,7 @@ func (h *Handler) CreateSubstitutionGroup(ctx context.Context, session *sessions
 }
 
 func (h *Handler) UpdateSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId int, substitutionGroupId int, data *models.SubstitutionGroupUpdate) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		err := models.ValidateData(data, h.logger)
 		if err != nil {
 			return err
@@ -47,7 +47,7 @@ func (h *Handler) GetSubstitutionGroups(ctx context.Context, shopId int) ([]mode
 }
 
 func (h *Handler) DeleteSubstitutionGroup(ctx context.Context, session *sessions.Session, shopId int, substitutionGroupId int) error {
-	return h.WithAuthorizeModifyShop(ctx, session, shopId, func(pq *db.PgxQueries) error {
+	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_MANAGE_ITEMS, func(pq *db.PgxQueries) error {
 		return pq.DeleteSubstitutionGroup(ctx, shopId, substitutionGroupId)
 	})
 }
