@@ -2,7 +2,6 @@ package user
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/WilliamTrojniak/TabAppBackend/models"
@@ -13,11 +12,8 @@ const userIdPath = "userId"
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	h.logger.Info("Registering user routes")
 
-	subrouter := http.NewServeMux()
 	router.HandleFunc("GET /users", h.handleGetUser)
-
-	router.Handle("/users/", http.StripPrefix("/users", subrouter))
-	subrouter.HandleFunc(fmt.Sprintf("PATCH /{%v}", userIdPath), h.handleUpdateUser)
+	router.HandleFunc("PATCH /users", h.handleUpdateUser)
 
 }
 
@@ -46,8 +42,11 @@ func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		h.handleError(w, err)
 		return
 	}
-
-	userId := r.PathValue(userIdPath)
+	userId, err := session.GetUserId()
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
 
 	data := models.UserUpdate{}
 	err = models.ReadRequestJson(r, &data)
