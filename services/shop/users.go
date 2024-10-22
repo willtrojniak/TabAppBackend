@@ -12,8 +12,8 @@ import (
 const (
 	ROLE_USER_OWNER         uint32 = 1 << 0
 	ROLE_USER_MANAGE_ITEMS  uint32 = 1 << 1
-	ROLE_USER_MANAGE_TABS   uint32 = 1 << 2
-	ROLE_USER_MANAGE_ORDERS uint32 = 1 << 3
+	ROLE_USER_MANAGE_TABS   uint32 = (1 << 2) | ROLE_USER_READ_TABS
+	ROLE_USER_MANAGE_ORDERS uint32 = (1 << 3) | ROLE_USER_READ_TABS
 	ROLE_USER_READ_TABS     uint32 = 1 << 4
 )
 
@@ -27,6 +27,7 @@ func (h *Handler) GetShopUserPermissions(ctx context.Context, session *sessions.
 		if err != nil {
 			return 0, err
 		}
+		roles = roles << 1
 
 		if isOwner {
 			roles = roles | ROLE_USER_OWNER

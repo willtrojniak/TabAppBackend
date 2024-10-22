@@ -142,7 +142,18 @@ func (h *Handler) handleGetShops(w http.ResponseWriter, r *http.Request) {
 
 	if rawParams.Has(pendingKey) {
 		if pending, err := strconv.ParseBool(rawParams.Get(pendingKey)); err == nil {
+			emptyId := ""
 			params.IsPending = &pending
+			if params.IsMember == nil {
+				isMember := true
+				params.IsMember = &isMember
+			}
+			params.UserId = &emptyId
+			if session, err := h.sessions.GetSession(r); err == nil {
+				if userId, err := session.GetUserId(); err == nil {
+					params.UserId = &userId
+				}
+			}
 		}
 	}
 
