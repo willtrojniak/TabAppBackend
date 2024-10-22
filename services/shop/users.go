@@ -41,13 +41,27 @@ func (h *Handler) GetShopUserPermissions(ctx context.Context, session *sessions.
 	return perms, nil
 }
 
-func (h *Handler) InviteUserToShop(ctx context.Context, session *sessions.Session, shopId int, user *models.ShopUserCreate) error {
-	err := models.ValidateData(user, h.logger)
+func (h *Handler) InviteUserToShop(ctx context.Context, session *sessions.Session, shopId int, userData *models.ShopUserCreate) error {
+	err := models.ValidateData(userData, h.logger)
 	if err != nil {
 		return err
 	}
 	return h.WithAuthorize(ctx, session, shopId, ROLE_USER_OWNER, func(pq *db.PgxQueries) error {
-		return pq.AddUserToShop(ctx, shopId, user)
+		shop, err := pq.GetShopById(ctx, shopId)
+		if err != nil {
+			return err
+		}
+		owner, err := pq.GetUser(ctx, shop.OwnerId)
+		if err != nil {
+			return err
+		}
+
+		// Dissallow inviting the shop owner as a member
+		if owner.Email == userData.Email {
+			return services.NewDataConflictServiceError(nil)
+		}
+
+		return pq.AddUserToShop(ctx, shopId, userData)
 	})
 }
 
