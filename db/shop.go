@@ -164,7 +164,7 @@ func (q *PgxQueries) GetShopUserPermissions(ctx context.Context, shopId int, use
     FROM shops
     LEFT JOIN shop_users ON shops.id = shop_users.shop_id AND shop_users.confirmed = TRUE
     LEFT JOIN users ON shop_users.user_id = users.id
-    WHERE shops.id = @shopId AND (users.id = @userId OR users.id IS NULL)
+    WHERE shops.id = @shopId AND (shops.owner_id = @userId OR users.id = @userId OR users.id IS NULL)
     `,
 		pgx.NamedArgs{
 			"shopId": shopId,
