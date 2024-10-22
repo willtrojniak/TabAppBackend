@@ -36,6 +36,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 
 	// Users & Permissions
 	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/permissions", shopIdParam), h.handleGetShopUserPermissions)
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/users", shopIdParam), h.handleGetShopUsers)
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/users/invite", shopIdParam), h.handleInviteUser)
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/users/remove", shopIdParam), h.handleRemoveUser)
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/accept", shopIdParam), h.handleAcceptInvite)
@@ -253,6 +254,29 @@ func (h *Handler) handleGetShopUserPermissions(w http.ResponseWriter, r *http.Re
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(roles)
+}
+
+func (h *Handler) handleGetShopUsers(w http.ResponseWriter, r *http.Request) {
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
+		return
+	}
+
+	session, err := h.sessions.GetSession(r)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	users, err := h.GetShopUsers(r.Context(), session, shopId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
 }
 
 func (h *Handler) handleInviteUser(w http.ResponseWriter, r *http.Request) {

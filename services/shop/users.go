@@ -42,6 +42,26 @@ func (h *Handler) GetShopUserPermissions(ctx context.Context, session *sessions.
 	return perms, nil
 }
 
+func (h *Handler) GetShopUsers(ctx context.Context, session *sessions.Session, shopId int) ([]models.ShopUser, error) {
+	return db.WithTxRet(ctx, h.store, func(pq *db.PgxQueries) ([]models.ShopUser, error) {
+		err := h.Authorize(ctx, session, shopId, ROLE_USER_OWNER, pq)
+		if err != nil {
+			// TODO: Better handling
+			return []models.ShopUser{}, nil
+		}
+		users, err := pq.GetShopUsers(ctx, shopId)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, user := range users {
+			user.Roles = user.Roles << 1
+			users[i] = user
+		}
+		return users, nil
+	})
+}
+
 func (h *Handler) InviteUserToShop(ctx context.Context, session *sessions.Session, shopId int, userData *models.ShopUserCreate) error {
 	err := models.ValidateData(userData, h.logger)
 	if err != nil {

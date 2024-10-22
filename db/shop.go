@@ -211,8 +211,8 @@ func (q *PgxQueries) AddUserToShop(ctx context.Context, shopId int, user *models
 func (q *PgxQueries) RemoveUserFromShop(ctx context.Context, shopId int, user *models.ShopUserCreate) error {
 	res, err := q.tx.Exec(ctx, `
     DELETE FROM shop_users
-    LEFT JOIN users ON shop_users.user_id = users.id
-    WHERE shop_users.shop_id = @shopId AND users.email = @email
+    USING users
+    WHERE shop_users.user_id = users.id AND shop_users.shop_id = @shopId AND users.email = @email
     `,
 		pgx.NamedArgs{
 			"shopId": shopId,
@@ -249,4 +249,26 @@ func (q *PgxQueries) ConfirmShopInvite(ctx context.Context, shopId int, userId s
 	}
 
 	return nil
+}
+
+func (pq *PgxQueries) GetShopUsers(ctx context.Context, shopId int) ([]models.ShopUser, error) {
+	rows, err := pq.tx.Query(ctx, `
+    SELECT shop_users.roles, shop_users.confirmed, shop_users.updated_at, users.*
+    FROM shop_users
+    LEFT JOIN users ON shop_users.user_id = users.id
+    WHERE shop_users.shop_id = @shopId
+    ORDER BY users.name
+    `, pgx.NamedArgs{
+		"shopId": shopId,
+	})
+	if err != nil {
+		return nil, handlePgxError(err)
+	}
+
+	users, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.ShopUser])
+	if err != nil {
+		return nil, handlePgxError(err)
+	}
+
+	return users, nil
 }
