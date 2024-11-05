@@ -134,13 +134,11 @@ func (s *Handler) RequireCSRFToken(next http.Handler) http.HandlerFunc {
 		validSession := sessionErr == nil
 
 		// Make sure header has token on future requests
-		if (validSession && requestToken != session.data.CSRFToken) || !validSession {
-			if validSession {
-				s.saveSessionToResponse(w, session)
-			} else {
-				// Create a new anonymous session if there is no active session
-				s.SetNewSession(w, r, nil)
-			}
+		if validSession {
+			s.saveSessionToResponse(w, session)
+		} else {
+			// Create a new anonymous session if there is no active session
+			s.SetNewSession(w, r, nil)
 		}
 
 		if !safeMethod {
