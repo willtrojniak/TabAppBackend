@@ -92,13 +92,18 @@ func (h *Handler) RemoveInviteToShop(ctx context.Context, session *sessions.Sess
 		return err
 	}
 
+	userId, err := session.GetUserId()
+	if err != nil {
+		return err
+	}
+
 	return db.WithTx(ctx, h.store, func(pq *db.PgxQueries) error {
 		authErr := h.Authorize(ctx, session, shopId, ROLE_USER_OWNER, pq)
 		if authErr == nil {
 			return pq.RemoveUserFromShop(ctx, shopId, data)
 		}
 
-		user, err := h.users.GetUser(ctx, session)
+		user, err := h.users.GetUser(ctx, userId)
 		if err != nil {
 			return err
 		}

@@ -104,6 +104,24 @@ func (s *Handler) GetSession(r *http.Request) (*Session, error) {
 	return session, nil
 }
 
+func (s *Handler) WithAuthedSessionUserId(next func(w http.ResponseWriter, r *http.Request, sUserId string)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, err := s.GetSession(r)
+		if r != nil {
+			s.handleError(w, err)
+			return
+		}
+
+		id, err := session.GetUserId()
+		if err != nil {
+			s.handleError(w, err)
+			return
+		}
+
+		next(w, r, id)
+	}
+}
+
 func (s *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, err := s.GetSession(r)

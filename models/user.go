@@ -1,8 +1,6 @@
 package models
 
-import (
-	"time"
-)
+import "time"
 
 type UserUpdate struct {
 	PreferredName *string `json:"preferred_name" db:"preferred_name" validate:"omitempty,min=2,max=64"`
@@ -18,4 +16,16 @@ type UserCreate struct {
 type User struct {
 	UserCreate
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
+
+type UserPermission func(subject *User, target *User) bool
+
+const (
+	USER_ACTION_UPDATE Action = "USER_ACTION_UPDATE"
+)
+
+var UserPermissions map[Action]UserPermission = map[Action]UserPermission{
+	USER_ACTION_UPDATE: func(s *User, t *User) bool {
+		return s.Id == t.Id
+	},
 }

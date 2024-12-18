@@ -18,46 +18,34 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 }
 
 func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
-	h.logger.Debug("Handling get user")
-	session, err := h.sessions.GetSession(r)
-	if err != nil {
-		h.handleError(w, err)
-		return
-	}
+	h.sessions.WithAuthedSessionUserId(func(w http.ResponseWriter, r *http.Request, sUserId string) {
+		h.logger.Debug("Handling get user")
 
-	user, err := h.GetUser(r.Context(), session)
-	if err != nil {
-		h.handleError(w, err)
-		return
-	}
+		user, err := h.GetUser(r.Context(), sUserId)
+		if err != nil {
+			h.handleError(w, err)
+			return
+		}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
-	return
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(user)
+		return
+	})
 }
 
 func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
-	session, err := h.sessions.GetSession(r)
-	if err != nil {
-		h.handleError(w, err)
-		return
-	}
-	userId, err := session.GetUserId()
-	if err != nil {
-		h.handleError(w, err)
-		return
-	}
+	h.sessions.WithAuthedSessionUserId(func(w http.ResponseWriter, r *http.Request, sUserId string) {
+		data := models.UserUpdate{}
+		err := models.ReadRequestJson(r, &data)
+		if err != nil {
+			h.handleError(w, err)
+			return
+		}
 
-	data := models.UserUpdate{}
-	err = models.ReadRequestJson(r, &data)
-	if err != nil {
-		h.handleError(w, err)
-		return
-	}
-
-	err = h.UpdateUser(r.Context(), session, userId, &data)
-	if err != nil {
-		h.handleError(w, err)
-		return
-	}
+		err = h.UpdateUser(r.Context(), sUserId, sUserId, &data)
+		if err != nil {
+			h.handleError(w, err)
+			return
+		}
+	})
 }
