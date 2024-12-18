@@ -7,6 +7,7 @@ import (
 	"github.com/WilliamTrojniak/TabAppBackend/db"
 	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/WilliamTrojniak/TabAppBackend/services"
+	"github.com/WilliamTrojniak/TabAppBackend/services/authorization"
 	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 )
 
@@ -24,15 +25,6 @@ func NewHandler(store *db.PgxStore, sessions *sessions.Handler, handleError serv
 		store:       store,
 		handleError: handleError,
 	}
-}
-
-func (h *Handler) AuthorizeUserAction(subject *models.User, target *models.User, action models.Action) (bool, error) {
-	fn, ok := models.UserPermissions[action]
-	if !ok {
-		h.logger.Error("Invalid user action", "action", action)
-		return false, services.NewInternalServiceError(nil)
-	}
-	return fn(subject, target), nil
 }
 
 func (h *Handler) CreateUser(ctx context.Context, data *models.UserCreate) (*models.User, error) {
@@ -84,7 +76,7 @@ func (h *Handler) UpdateUser(ctx context.Context, sessionUserId string, userId s
 			return err
 		}
 
-		ok, err := h.AuthorizeUserAction(subject, target, models.USER_ACTION_UPDATE)
+		ok, err := authorization.AuthorizeUserAction(subject, target, authorization.USER_ACTION_UPDATE)
 		if err != nil {
 			return err
 		}

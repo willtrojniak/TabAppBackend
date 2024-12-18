@@ -17,8 +17,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type Action string
-
 var Validate *validator.Validate
 
 func init() {
