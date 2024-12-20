@@ -18,11 +18,12 @@ func (h *Handler) CreateTab(ctx context.Context, session *sessions.AuthedSession
 		return err
 	}
 
-	return WithAuthorizeShopAction(ctx, h.store, session, data.ShopId, authorization.SHOP_ACTION_CREATE_TAB, func(pq *db.PgxQueries, user *models.User, shop *models.Shop) error {
+	return WithAuthorizeShopAction(ctx, h.store, session, data.ShopId, authorization.SHOP_ACTION_REQUEST_TAB, func(pq *db.PgxQueries, user *models.User, shop *models.Shop) error {
 		// By default the tab status is pending, unless it is created by user with role
 		status := models.TAB_STATUS_PENDING
-		// FIXME: Account for other roles
-		if user.Id == shop.OwnerId {
+
+		// Check if the user has permission to create/manage tabs
+		if ok, err := authorization.AuthorizeShopAction(user, shop, authorization.SHOP_ACTION_CREATE_TAB); err == nil && ok {
 			status = models.TAB_STATUS_CONFIRMED
 		}
 
@@ -112,11 +113,6 @@ func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.AuthedSes
 	}
 
 	return WithAuthorizeTabAction(ctx, h.store, session, shopId, tabId, authorization.TAB_ACTION_ADD_ORDER, func(pq *db.PgxQueries, user *models.User, shop *models.Shop, tab *models.Tab) error {
-		// TODO: Move to authorization
-		if !tab.IsActive() {
-			return services.NewDataConflictServiceError(nil)
-		}
-
 		return pq.AddOrderToTab(ctx, shopId, tabId, data)
 	})
 }
@@ -128,11 +124,6 @@ func (h *Handler) RemoveOrderFromTab(ctx context.Context, session *sessions.Auth
 	}
 
 	return WithAuthorizeTabAction(ctx, h.store, session, shopId, tabId, authorization.TAB_ACTION_REMOVE_ORDER, func(pq *db.PgxQueries, user *models.User, shop *models.Shop, tab *models.Tab) error {
-		// TODO: Move to authorization
-		if !tab.IsActive() {
-			return services.NewDataConflictServiceError(nil)
-		}
-
 		return pq.RemoveOrderFromTab(ctx, shopId, tabId, data)
 	})
 }

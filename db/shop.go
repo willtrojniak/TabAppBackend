@@ -86,6 +86,12 @@ func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (*models.Shop,
 		return nil, handlePgxError(err)
 	}
 
+	users, err := q.GetShopUsers(ctx, shopId)
+	if err != nil {
+		return nil, err
+	}
+	shop.Users = users
+
 	return shop, nil
 }
 

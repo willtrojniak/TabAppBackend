@@ -27,6 +27,7 @@ type ShopOverview struct {
 type Shop struct {
 	ShopOverview
 	Locations []Location `json:"locations" db:"locations"`
+	Users     []ShopUser `json:"users" db:"users"`
 }
 
 type GetShopsQueryParams struct {

@@ -1,6 +1,10 @@
 package authorization
 
-import "github.com/WilliamTrojniak/TabAppBackend/models"
+import (
+	"slices"
+
+	"github.com/WilliamTrojniak/TabAppBackend/models"
+)
 
 type shopAuthorizeFn = authorizeFn[models.Shop]
 
@@ -10,7 +14,6 @@ func AuthorizeShopAction(subject *models.User, target *models.Shop, action Actio
 
 const (
 	SHOP_ACTION_READ                Action = "SHOP_ACTION_READ"
-	SHOP_ACTION_READ_USERS          Action = "SHOP_ACTION_READ_USERS"
 	SHOP_ACTION_INVITE_USER         Action = "SHOP_ACTION_INVITE_USER"
 	SHOP_ACTION_REMOVE_USER         Action = "SHOP_ACTION_REMOVE_USER"
 	SHOP_ACTION_UPDATE              Action = "SHOP_ACTION_UPDATE"
@@ -35,35 +38,50 @@ const (
 	SHOP_ACTION_UPDATE_SUBSTITUTION Action = "SHOP_ACTION_UPDATE_SUBSTITUTION"
 	SHOP_ACTION_DELETE_SUBSTITUTION Action = "SHOP_ACTION_DELETE_SUBSTITUTION"
 	SHOP_ACTION_READ_TABS           Action = "SHOP_ACTION_READ_TABS"
+	SHOP_ACTION_REQUEST_TAB         Action = "SHOP_ACTION_REQUEST_TAB"
 	SHOP_ACTION_CREATE_TAB          Action = "SHOP_ACTION_CREATE_TAB"
+)
+
+const (
+	ROLE_SHOP_MANAGE_ITEMS     uint32 = 1 << 0
+	ROLE_SHOP_MANAGE_TABS      uint32 = (1 << 1) | ROLE_SHOP_READ_TABS
+	ROLE_SHOP_MANAGE_ORDERS    uint32 = (1 << 2) | ROLE_SHOP_READ_TABS
+	ROLE_SHOP_READ_TABS        uint32 = 1 << 3
+	ROLE_SHOP_MANAGE_LOCATIONS uint32 = 1 << 4
 )
 
 var shopAuthorizeActionFns authorizeActionMap[models.Shop] = authorizeActionMap[models.Shop]{
 	SHOP_ACTION_READ:                func(s *models.User, t *models.Shop) bool { return true },
-	SHOP_ACTION_READ_USERS:          func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
 	SHOP_ACTION_INVITE_USER:         func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
 	SHOP_ACTION_REMOVE_USER:         func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
 	SHOP_ACTION_UPDATE:              func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
 	SHOP_ACTION_DELETE:              func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_CREATE_LOCATION:     func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_UPDATE_LOCATION:     func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_DELETE_LOCATION:     func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_READ_CATEGORIES:     func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_CREATE_CATEGORY:     func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_UPDATE_CATEGORY:     func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_DELETE_CATEGORY:     func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_READ_ITEMS:          func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_READ_ITEM:           func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_CREATE_ITEM:         func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_UPDATE_ITEM:         func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_DELETE_ITEM:         func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_CREATE_VARIANT:      func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_UPDATE_VARIANT:      func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_DELETE_VARIANT:      func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_READ_SUBSTITUTIONS:  func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_CREATE_SUBSTITUTION: func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_UPDATE_SUBSTITUTION: func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_DELETE_SUBSTITUTION: func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_READ_TABS:           func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
-	SHOP_ACTION_CREATE_TAB:          func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
+	SHOP_ACTION_CREATE_LOCATION:     func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_LOCATIONS) },
+	SHOP_ACTION_UPDATE_LOCATION:     func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_LOCATIONS) },
+	SHOP_ACTION_DELETE_LOCATION:     func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_LOCATIONS) },
+	SHOP_ACTION_READ_CATEGORIES:     func(s *models.User, t *models.Shop) bool { return true },
+	SHOP_ACTION_CREATE_CATEGORY:     func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_UPDATE_CATEGORY:     func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_DELETE_CATEGORY:     func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_READ_ITEMS:          func(s *models.User, t *models.Shop) bool { return true },
+	SHOP_ACTION_READ_ITEM:           func(s *models.User, t *models.Shop) bool { return true },
+	SHOP_ACTION_CREATE_ITEM:         func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_UPDATE_ITEM:         func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_DELETE_ITEM:         func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_CREATE_VARIANT:      func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_UPDATE_VARIANT:      func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_DELETE_VARIANT:      func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_READ_SUBSTITUTIONS:  func(s *models.User, t *models.Shop) bool { return true },
+	SHOP_ACTION_CREATE_SUBSTITUTION: func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_UPDATE_SUBSTITUTION: func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_DELETE_SUBSTITUTION: func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_ITEMS) },
+	SHOP_ACTION_READ_TABS:           func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_READ_TABS) },
+	SHOP_ACTION_REQUEST_TAB:         func(s *models.User, t *models.Shop) bool { return true },
+	SHOP_ACTION_CREATE_TAB:          func(s *models.User, t *models.Shop) bool { return hasRole(s, t, ROLE_SHOP_MANAGE_TABS) },
+}
+
+func hasRole(s *models.User, t *models.Shop, role uint32) bool {
+	return s.Id == t.OwnerId || slices.ContainsFunc(t.Users, func(u models.ShopUser) bool {
+		return u.Id == s.Id && u.Roles&role == role
+	})
 }

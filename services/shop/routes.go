@@ -36,8 +36,6 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	router.HandleFunc(fmt.Sprintf("DELETE /shops/{%v}", shopIdParam), h.sessions.WithAuthedSession(h.handleDeleteShop))
 
 	// Users & Permissions
-	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/permissions", shopIdParam), h.sessions.WithAuthedSession(h.handleGetShopUserPermissions))
-	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/users", shopIdParam), h.sessions.WithAuthedSession(h.handleGetShopUsers))
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/users/invite", shopIdParam), h.sessions.WithAuthedSession(h.handleInviteUser))
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/users/remove", shopIdParam), h.sessions.WithAuthedSession(h.handleRemoveUser))
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/accept", shopIdParam), h.sessions.WithAuthedSession(h.handleAcceptInvite))
@@ -194,39 +192,6 @@ func (h *Handler) handleDeleteShop(w http.ResponseWriter, r *http.Request, sessi
 		h.handleError(w, err)
 		return
 	}
-}
-
-func (h *Handler) handleGetShopUserPermissions(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
-	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
-	if err != nil {
-		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
-		return
-	}
-
-	roles, err := h.GetShopUserPermissions(r.Context(), session, shopId)
-	if err != nil {
-		h.handleError(w, err)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(roles)
-}
-
-func (h *Handler) handleGetShopUsers(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
-	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
-	if err != nil {
-		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
-		return
-	}
-
-	users, err := h.GetShopUsers(r.Context(), session, shopId)
-	if err != nil {
-		h.handleError(w, err)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(users)
 }
 
 func (h *Handler) handleInviteUser(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
