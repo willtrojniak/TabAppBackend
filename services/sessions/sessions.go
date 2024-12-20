@@ -37,6 +37,11 @@ type Session struct {
 	ttl  time.Duration
 }
 
+type AuthedSession struct {
+	Id     string
+	UserId string
+}
+
 type Handler struct {
 	logger      *slog.Logger
 	store       cache.Cache
@@ -104,21 +109,21 @@ func (s *Handler) GetSession(r *http.Request) (*Session, error) {
 	return session, nil
 }
 
-func (s *Handler) WithAuthedSessionUserId(next func(w http.ResponseWriter, r *http.Request, sUserId string)) http.HandlerFunc {
+func (s *Handler) WithAuthedSession(next func(w http.ResponseWriter, r *http.Request, session *AuthedSession)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, err := s.GetSession(r)
-		if r != nil {
-			s.handleError(w, err)
-			return
-		}
-
-		id, err := session.GetUserId()
 		if err != nil {
 			s.handleError(w, err)
 			return
 		}
 
-		next(w, r, id)
+		authed, err := session.Authed()
+		if err != nil {
+			s.handleError(w, err)
+			return
+		}
+
+		next(w, r, authed)
 	}
 }
 
@@ -129,7 +134,7 @@ func (s *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
 			s.handleError(w, err)
 			return
 		}
-		if _, err := session.GetUserId(); err != nil {
+		if _, err := session.Authed(); err != nil {
 			s.handleError(w, err)
 			return
 		}
@@ -274,11 +279,11 @@ func (s *Handler) getSessionFromStore(ctx context.Context, id string) (*Session,
 	return session, nil
 }
 
-func (s *Session) GetUserId() (string, error) {
+func (s *Session) Authed() (*AuthedSession, error) {
 	if s.data.UserId == "" {
-		return "", services.NewUnauthenticatedServiceError(nil)
+		return nil, services.NewUnauthenticatedServiceError(nil)
 	}
-	return s.data.UserId, nil
+	return &AuthedSession{Id: s.Id, UserId: s.data.UserId}, nil
 }
 
 func readUserIP(r *http.Request) string {

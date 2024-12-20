@@ -64,7 +64,7 @@ func (q *PgxQueries) GetItems(ctx context.Context, shopId int) ([]models.ItemOve
 
 }
 
-func (q *PgxQueries) GetItem(ctx context.Context, shopId int, itemId int) (models.Item, error) {
+func (q *PgxQueries) GetItem(ctx context.Context, shopId int, itemId int) (*models.Item, error) {
 	rows, err := q.tx.Query(ctx, `
     SELECT items.id, items.name, items.base_price,
       (SELECT COALESCE(json_agg(item_categories ORDER BY item_categories.name) FILTER (WHERE item_categories.id IS NOT NULL), '[]')
@@ -107,12 +107,12 @@ func (q *PgxQueries) GetItem(ctx context.Context, shopId int, itemId int) (model
 		})
 
 	if err != nil {
-		return models.Item{}, handlePgxError(err)
+		return nil, handlePgxError(err)
 	}
 
-	item, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByNameLax[models.Item])
+	item, err := pgx.CollectExactlyOneRow(rows, pgx.RowToAddrOfStructByNameLax[models.Item])
 	if err != nil {
-		return models.Item{}, handlePgxError(err)
+		return nil, handlePgxError(err)
 	}
 
 	return item, nil

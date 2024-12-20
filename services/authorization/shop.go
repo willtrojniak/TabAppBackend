@@ -11,6 +11,8 @@ func AuthorizeShopAction(subject *models.User, target *models.Shop, action Actio
 const (
 	SHOP_ACTION_READ                Action = "SHOP_ACTION_READ"
 	SHOP_ACTION_READ_USERS          Action = "SHOP_ACTION_READ_USERS"
+	SHOP_ACTION_INVITE_USER         Action = "SHOP_ACTION_INVITE_USER"
+	SHOP_ACTION_REMOVE_USER         Action = "SHOP_ACTION_REMOVE_USER"
 	SHOP_ACTION_UPDATE              Action = "SHOP_ACTION_UPDATE"
 	SHOP_ACTION_DELETE              Action = "SHOP_ACTION_DELETE"
 	SHOP_ACTION_CREATE_LOCATION     Action = "SHOP_ACTION_CREATE_LOCATION"
@@ -39,6 +41,8 @@ const (
 var shopAuthorizeActionFns authorizeActionMap[models.Shop] = authorizeActionMap[models.Shop]{
 	SHOP_ACTION_READ:                func(s *models.User, t *models.Shop) bool { return true },
 	SHOP_ACTION_READ_USERS:          func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
+	SHOP_ACTION_INVITE_USER:         func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
+	SHOP_ACTION_REMOVE_USER:         func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
 	SHOP_ACTION_UPDATE:              func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
 	SHOP_ACTION_DELETE:              func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },
 	SHOP_ACTION_CREATE_LOCATION:     func(s *models.User, t *models.Shop) bool { return s.Id == t.OwnerId },

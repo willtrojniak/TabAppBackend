@@ -45,19 +45,19 @@ func (h *Handler) CreateUser(ctx context.Context, data *models.UserCreate) (*mod
 	return user, nil
 }
 
-func (h *Handler) GetUser(ctx context.Context, userId string) (*models.User, error) {
+func (h *Handler) GetUser(ctx context.Context, session *sessions.AuthedSession) (*models.User, error) {
 	user, err := db.WithTxRet(ctx, h.store, func(q *db.PgxQueries) (*models.User, error) {
-		return q.GetUser(ctx, userId)
+		return q.GetUser(ctx, session.UserId)
 	})
 	if err != nil {
-		h.logger.Error("Failed to get user from database", "userId", userId, "err", err)
+		h.logger.Error("Failed to get user from database", "userId", session.UserId, "err", err)
 		return nil, err
 	}
 	return user, nil
 
 }
 
-func (h *Handler) UpdateUser(ctx context.Context, sessionUserId string, userId string, data *models.UserUpdate) error {
+func (h *Handler) UpdateUser(ctx context.Context, session *sessions.AuthedSession, userId string, data *models.UserUpdate) error {
 
 	h.logger.Debug("Updating user", "id", userId)
 
@@ -67,7 +67,7 @@ func (h *Handler) UpdateUser(ctx context.Context, sessionUserId string, userId s
 	}
 
 	err = db.WithTx(ctx, h.store, func(q *db.PgxQueries) error {
-		subject, err := q.GetUser(ctx, sessionUserId)
+		subject, err := q.GetUser(ctx, session.UserId)
 		if err != nil {
 			return err
 		}

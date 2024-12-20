@@ -14,11 +14,6 @@ const (
 )
 
 var userAuthorizeActionFns authorizeActionMap[models.User] = authorizeActionMap[models.User]{
-	USER_ACTION_UPDATE: func(s *models.User, t *models.User) bool {
-		return s.Id == t.Id
-	},
-	USER_ACTION_CREATE_SHOP: func(s *models.User, t *models.User) bool {
-		// FIXME: Update to limit number of shops
-		return true
-	},
+	USER_ACTION_CREATE_SHOP: func(s, t *models.User) bool { return s.Id == t.Id },
+	USER_ACTION_UPDATE:      func(s *models.User, t *models.User) bool { return s.Id == t.Id },
 }

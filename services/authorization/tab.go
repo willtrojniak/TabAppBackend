@@ -14,13 +14,14 @@ func AuthorizeTabAction(subject *models.User, target *TabTarget, action Action) 
 }
 
 const (
-	TAB_ACTION_READ         Action = "TAB_ACTION_READ"
-	TAB_ACTION_UPDATE       Action = "TAB_ACTION_UPDATE"
-	TAB_ACTION_APPROVE      Action = "TAB_ACTION_APPROVE"
-	TAB_ACTION_CLOSE        Action = "TAB_ACTION_CLOSE"
-	TAB_ACTION_CLOSE_BILL   Action = "TAB_ACTION_CLOSE_BILL"
-	TAB_ACTION_ADD_ORDER    Action = "TAB_ACTION_ADD_ORDER"
-	TAB_ACTION_REMOVE_ORDER Action = "TAB_ACTION_REMOVE_ORDER"
+	TAB_ACTION_READ           Action = "TAB_ACTION_READ"
+	TAB_ACTION_REQUEST_UPDATE Action = "TAB_ACTION_REQUEST_UPDATE"
+	TAB_ACTION_UPDATE         Action = "TAB_ACTION_UPDATE"
+	TAB_ACTION_APPROVE        Action = "TAB_ACTION_APPROVE"
+	TAB_ACTION_CLOSE          Action = "TAB_ACTION_CLOSE"
+	TAB_ACTION_CLOSE_BILL     Action = "TAB_ACTION_CLOSE_BILL"
+	TAB_ACTION_ADD_ORDER      Action = "TAB_ACTION_ADD_ORDER"
+	TAB_ACTION_REMOVE_ORDER   Action = "TAB_ACTION_REMOVE_ORDER"
 )
 
 var tabAuthorizeActionFns authorizeActionMap[TabTarget] = authorizeActionMap[TabTarget]{

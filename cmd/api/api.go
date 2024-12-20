@@ -44,7 +44,7 @@ func (s *APIServer) Run() error {
 		log.Fatal("Failed to initialize auth handler")
 	}
 
-	shopHandler := shop.NewHandler(s.store, sessionManager, userHandler, services.HandleHttpError, slog.Default())
+	shopHandler := shop.NewHandler(s.store, sessionManager, services.HandleHttpError, slog.Default())
 
 	router := http.NewServeMux()
 	v1 := http.NewServeMux()

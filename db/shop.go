@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (q *PgxQueries) CreateShop(ctx context.Context, data *models.ShopCreate) error {
-	return q.WithTx(ctx, func(q *PgxQueries) error {
+func (q *PgxQueries) CreateShop(ctx context.Context, data *models.ShopCreate) (int, error) {
+	return WithTxRet(ctx, q, func(q *PgxQueries) (int, error) {
 		row := q.tx.QueryRow(ctx,
 			`INSERT INTO shops (owner_id, name) VALUES (@ownerId, @name) RETURNING id`,
 			pgx.NamedArgs{
@@ -19,14 +19,14 @@ func (q *PgxQueries) CreateShop(ctx context.Context, data *models.ShopCreate) er
 		var shopId int
 		err := row.Scan(&shopId)
 		if err != nil {
-			return handlePgxError(err)
+			return 0, handlePgxError(err)
 		}
 
 		err = q.setShopPaymentMethods(ctx, shopId, data.PaymentMethods)
 		if err != nil {
-			return handlePgxError(err)
+			return 0, handlePgxError(err)
 		}
-		return nil
+		return shopId, nil
 	})
 }
 
@@ -39,11 +39,8 @@ func (q *PgxQueries) GetShops(ctx context.Context, params *models.GetShopsQueryP
 		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
     LEFT JOIN shop_users ON shops.id = shop_users.shop_id
-    WHERE ((@userId::text is NULL) OR ((@userId::text = shop_users.user_id OR @userId::text = shops.owner_id) = @isMember))
-    AND (
-      (@pending::boolean is NULL) 
-      OR (@userId::text = shops.owner_id AND @pending::boolean = FALSE) 
-      OR (@userId::text = shop_users.user_id AND @pending::boolean != shop_users.confirmed))
+    WHERE ((@isMember::boolean is NULL) OR (((@userId = shop_users.user_id AND shop_users.confirmed) OR @userId = shops.owner_id) = @isMember))
+    AND ((@pending::boolean is NULL) OR ((@userId = shop_users.user_id AND shop_users.confirmed != @pending) OR ((@userId = shops.owner_id) != @pending))) 
     GROUP BY shops.id
     ORDER BY shops.name
     LIMIT @limit OFFSET @offset`,
@@ -65,7 +62,7 @@ func (q *PgxQueries) GetShops(ctx context.Context, params *models.GetShopsQueryP
 	return shops, nil
 }
 
-func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (models.Shop, error) {
+func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (*models.Shop, error) {
 	row, err := q.tx.Query(ctx,
 		`SELECT shops.*, 
       array_remove(array_agg(payment_methods.method), NULL) as payment_methods,
@@ -81,12 +78,12 @@ func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (models.Shop, 
 			"shopId": shopId,
 		})
 	if err != nil {
-		return models.Shop{}, handlePgxError(err)
+		return nil, handlePgxError(err)
 	}
 
-	shop, err := pgx.CollectOneRow(row, pgx.RowToStructByNameLax[models.Shop])
+	shop, err := pgx.CollectOneRow(row, pgx.RowToAddrOfStructByNameLax[models.Shop])
 	if err != nil {
-		return models.Shop{}, handlePgxError(err)
+		return nil, handlePgxError(err)
 	}
 
 	return shop, nil

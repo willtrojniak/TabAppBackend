@@ -115,7 +115,7 @@ type tabUpdateBase struct {
 type TabUpdate struct {
 	TabBase
 	VerificationList []string `json:"verification_list" db:"verification_list" validate:"required,dive,required,email"`
-	LocationIds      []int    `json:"location_ids" db:"location_ids" validate:"required,dive,gte=1,min=1"`
+	LocationIds      []uint   `json:"location_ids" db:"location_ids" validate:"required,dive,gte=1,min=1"`
 }
 
 type TabCreate struct {

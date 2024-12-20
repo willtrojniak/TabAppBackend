@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/WilliamTrojniak/TabAppBackend/models"
+	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
 )
 
 const userIdPath = "userId"
@@ -18,10 +19,10 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 }
 
 func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
-	h.sessions.WithAuthedSessionUserId(func(w http.ResponseWriter, r *http.Request, sUserId string) {
+	h.sessions.WithAuthedSession(func(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
 		h.logger.Debug("Handling get user")
 
-		user, err := h.GetUser(r.Context(), sUserId)
+		user, err := h.GetUser(r.Context(), session)
 		if err != nil {
 			h.handleError(w, err)
 			return
@@ -34,7 +35,7 @@ func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
-	h.sessions.WithAuthedSessionUserId(func(w http.ResponseWriter, r *http.Request, sUserId string) {
+	h.sessions.WithAuthedSession(func(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
 		data := models.UserUpdate{}
 		err := models.ReadRequestJson(r, &data)
 		if err != nil {
@@ -42,7 +43,7 @@ func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = h.UpdateUser(r.Context(), sUserId, sUserId, &data)
+		err = h.UpdateUser(r.Context(), session, session.UserId, &data)
 		if err != nil {
 			h.handleError(w, err)
 			return
