@@ -19,8 +19,8 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 }
 
 func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
+	h.logger.Debug("Handling get user")
 	h.sessions.WithAuthedSession(func(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
-		h.logger.Debug("Handling get user")
 
 		user, err := h.GetUser(r.Context(), session)
 		if err != nil {
@@ -31,7 +31,7 @@ func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(user)
 		return
-	})
+	})(w, r)
 }
 
 func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
