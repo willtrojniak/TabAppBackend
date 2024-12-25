@@ -15,7 +15,7 @@ type ShopUpdate struct {
 }
 
 type ShopCreate struct {
-	OwnerId string `json:"-" db:"owner_id" validate:"required,max=255"`
+	OwnerId string `json:"owner_id" db:"owner_id" validate:"required,max=255"`
 	ShopUpdate
 }
 

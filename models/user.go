@@ -7,7 +7,7 @@ type UserUpdate struct {
 }
 
 type UserCreate struct {
-	Id    string `json:"-" db:"id" validate:"required,max=255"`
+	Id    string `json:"id" db:"id" validate:"required,max=255"`
 	Email string `json:"email" db:"email" validate:"required,email,max=255"`
 	Name  string `json:"name" db:"name" validate:"required,min=2,max=64"`
 	UserUpdate

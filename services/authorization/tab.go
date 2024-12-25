@@ -33,7 +33,9 @@ var tabAuthorizeActionFns authorizeActionMap[TabTarget] = authorizeActionMap[Tab
 	TAB_ACTION_REQUEST_UPDATE: func(s *models.User, t *TabTarget) bool {
 		return s.Id == t.Tab.OwnerId || hasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS)
 	},
-	TAB_ACTION_UPDATE:     func(s *models.User, t *TabTarget) bool { return hasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS) },
+	TAB_ACTION_UPDATE: func(s *models.User, t *TabTarget) bool {
+		return hasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS) || (s.Id == t.Tab.OwnerId && t.Tab.Status == models.TAB_STATUS_PENDING.String())
+	},
 	TAB_ACTION_APPROVE:    func(s *models.User, t *TabTarget) bool { return hasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS) },
 	TAB_ACTION_CLOSE:      func(s *models.User, t *TabTarget) bool { return hasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS) },
 	TAB_ACTION_CLOSE_BILL: func(s *models.User, t *TabTarget) bool { return hasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS) },
