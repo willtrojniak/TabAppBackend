@@ -93,6 +93,8 @@ func (h *Handler) handleCreateShop(w http.ResponseWriter, r *http.Request, sessi
 		return
 	}
 
+	data.OwnerId = session.UserId
+
 	_, err = h.CreateShop(r.Context(), session, data)
 	if err != nil {
 		h.handleError(w, err)
@@ -757,6 +759,7 @@ func (h *Handler) handleGetTabById(w http.ResponseWriter, r *http.Request, sessi
 		h.handleError(w, err)
 		return
 	}
+	h.logger.Debug("tab", "tab", tab)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tab)
