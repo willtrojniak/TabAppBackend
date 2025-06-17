@@ -98,12 +98,12 @@ func (h *Handler) GetTabs(ctx context.Context, session *sessions.AuthedSession, 
 	return tabs, err
 }
 
-func (h *Handler) GetTabById(ctx context.Context, session *sessions.AuthedSession, shopId int, tabId int) (tab *models.Tab, err error) {
+func (h *Handler) GetTabById(ctx context.Context, session *sessions.AuthedSession, shopId int, tabId int) (t *models.Tab, err error) {
 	err = WithAuthorizeTabAction(ctx, h.store, session, shopId, tabId, authorization.TAB_ACTION_READ, func(pq *db.PgxQueries, user *models.User, shop *models.Shop, tab *models.Tab) error {
-		tab, err = pq.GetTabById(ctx, shopId, tabId)
-		return err
+		t = tab
+		return nil
 	})
-	return tab, err
+	return t, err
 }
 
 func (h *Handler) AddOrderToTab(ctx context.Context, session *sessions.AuthedSession, shopId int, tabId int, data *models.BillOrderCreate) error {

@@ -759,7 +759,6 @@ func (h *Handler) handleGetTabById(w http.ResponseWriter, r *http.Request, sessi
 		h.handleError(w, err)
 		return
 	}
-	h.logger.Debug("tab", "tab", tab)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tab)
