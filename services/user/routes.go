@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/WilliamTrojniak/TabAppBackend/models"
-	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
+	"github.com/willtrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/services/sessions"
 )
 
 const userIdPath = "userId"

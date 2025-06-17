@@ -6,14 +6,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/WilliamTrojniak/TabAppBackend/cache"
-	"github.com/WilliamTrojniak/TabAppBackend/db"
-	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/services/auth"
-	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
-	"github.com/WilliamTrojniak/TabAppBackend/services/shop"
-	"github.com/WilliamTrojniak/TabAppBackend/services/user"
 	"github.com/redis/go-redis/v9"
+	"github.com/willtrojniak/TabAppBackend/cache"
+	"github.com/willtrojniak/TabAppBackend/db"
+	"github.com/willtrojniak/TabAppBackend/services"
+	"github.com/willtrojniak/TabAppBackend/services/auth"
+	"github.com/willtrojniak/TabAppBackend/services/sessions"
+	"github.com/willtrojniak/TabAppBackend/services/shop"
+	"github.com/willtrojniak/TabAppBackend/services/user"
 )
 
 type APIServer struct {

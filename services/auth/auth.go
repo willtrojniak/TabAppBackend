@@ -10,12 +10,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/WilliamTrojniak/TabAppBackend/env"
-	"github.com/WilliamTrojniak/TabAppBackend/models"
-	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
-	"github.com/WilliamTrojniak/TabAppBackend/services/user"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/willtrojniak/TabAppBackend/env"
+	"github.com/willtrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/services"
+	"github.com/willtrojniak/TabAppBackend/services/sessions"
+	"github.com/willtrojniak/TabAppBackend/services/user"
 	"golang.org/x/oauth2"
 )
 

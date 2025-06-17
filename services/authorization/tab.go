@@ -1,7 +1,7 @@
 package authorization
 
 import (
-	"github.com/WilliamTrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/models"
 )
 
 type TabTarget struct {

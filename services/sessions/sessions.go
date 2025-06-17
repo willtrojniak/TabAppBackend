@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/WilliamTrojniak/TabAppBackend/cache"
-	"github.com/WilliamTrojniak/TabAppBackend/models"
-	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/util"
+	"github.com/willtrojniak/TabAppBackend/cache"
+	"github.com/willtrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/services"
+	"github.com/willtrojniak/TabAppBackend/util"
 )
 
 const (

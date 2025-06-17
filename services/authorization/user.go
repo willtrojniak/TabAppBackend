@@ -1,6 +1,6 @@
 package authorization
 
-import "github.com/WilliamTrojniak/TabAppBackend/models"
+import "github.com/willtrojniak/TabAppBackend/models"
 
 type userAuthorizeFn = authorizeFn[models.User]
 

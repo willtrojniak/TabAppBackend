@@ -3,7 +3,7 @@ package authorization
 import (
 	"fmt"
 
-	"github.com/WilliamTrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/models"
 )
 
 type Action string

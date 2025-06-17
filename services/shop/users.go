@@ -3,11 +3,11 @@ package shop
 import (
 	"context"
 
-	"github.com/WilliamTrojniak/TabAppBackend/db"
-	"github.com/WilliamTrojniak/TabAppBackend/models"
-	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/services/authorization"
-	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
+	"github.com/willtrojniak/TabAppBackend/db"
+	"github.com/willtrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/services"
+	"github.com/willtrojniak/TabAppBackend/services/authorization"
+	"github.com/willtrojniak/TabAppBackend/services/sessions"
 )
 
 func (h *Handler) InviteUserToShop(ctx context.Context, session *sessions.AuthedSession, shopId int, userData *models.ShopUserCreate) error {

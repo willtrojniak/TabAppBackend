@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/WilliamTrojniak/TabAppBackend/models"
-	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/jackc/pgx/v5"
+	"github.com/willtrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/services"
 )
 
 func (q *PgxQueries) CreateTab(ctx context.Context, data *models.TabCreate, status models.TabStatus) error {

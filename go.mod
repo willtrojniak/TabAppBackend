@@ -1,4 +1,4 @@
-module github.com/WilliamTrojniak/TabAppBackend
+module github.com/willtrojniak/TabAppBackend
 
 go 1.22.4
 

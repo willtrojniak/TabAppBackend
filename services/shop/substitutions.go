@@ -3,10 +3,10 @@ package shop
 import (
 	"context"
 
-	"github.com/WilliamTrojniak/TabAppBackend/db"
-	"github.com/WilliamTrojniak/TabAppBackend/models"
-	"github.com/WilliamTrojniak/TabAppBackend/services/authorization"
-	"github.com/WilliamTrojniak/TabAppBackend/services/sessions"
+	"github.com/willtrojniak/TabAppBackend/db"
+	"github.com/willtrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/services/authorization"
+	"github.com/willtrojniak/TabAppBackend/services/sessions"
 )
 
 func (h *Handler) CreateSubstitutionGroup(ctx context.Context, session *sessions.AuthedSession, data *models.SubstitutionGroupCreate) error {
