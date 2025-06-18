@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-push-image:
-    runs-on: [ubuntu-latest, arm64]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
