@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/WilliamTrojniak/TabAppBackend/env"
+	"github.com/willtrojniak/TabAppBackend/env"
 )
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {

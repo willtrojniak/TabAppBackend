@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/WilliamTrojniak/TabAppBackend/cache"
-	"github.com/WilliamTrojniak/TabAppBackend/models"
-	"github.com/WilliamTrojniak/TabAppBackend/services"
-	"github.com/WilliamTrojniak/TabAppBackend/util"
+	"github.com/willtrojniak/TabAppBackend/cache"
+	"github.com/willtrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/services"
+	"github.com/willtrojniak/TabAppBackend/util"
 )
 
 const (
@@ -35,6 +35,11 @@ type Session struct {
 	data sessionData
 	Id   string
 	ttl  time.Duration
+}
+
+type AuthedSession struct {
+	Id     string
+	UserId string
 }
 
 type Handler struct {
@@ -104,6 +109,24 @@ func (s *Handler) GetSession(r *http.Request) (*Session, error) {
 	return session, nil
 }
 
+func (s *Handler) WithAuthedSession(next func(w http.ResponseWriter, r *http.Request, session *AuthedSession)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, err := s.GetSession(r)
+		if err != nil {
+			s.handleError(w, err)
+			return
+		}
+
+		authed, err := session.Authed()
+		if err != nil {
+			s.handleError(w, err)
+			return
+		}
+
+		next(w, r, authed)
+	}
+}
+
 func (s *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, err := s.GetSession(r)
@@ -111,7 +134,7 @@ func (s *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
 			s.handleError(w, err)
 			return
 		}
-		if _, err := session.GetUserId(); err != nil {
+		if _, err := session.Authed(); err != nil {
 			s.handleError(w, err)
 			return
 		}
@@ -256,11 +279,11 @@ func (s *Handler) getSessionFromStore(ctx context.Context, id string) (*Session,
 	return session, nil
 }
 
-func (s *Session) GetUserId() (string, error) {
+func (s *Session) Authed() (*AuthedSession, error) {
 	if s.data.UserId == "" {
-		return "", services.NewUnauthenticatedServiceError(nil)
+		return nil, services.NewUnauthenticatedServiceError(nil)
 	}
-	return s.data.UserId, nil
+	return &AuthedSession{Id: s.Id, UserId: s.data.UserId}, nil
 }
 
 func readUserIP(r *http.Request) string {

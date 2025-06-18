@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/WilliamTrojniak/TabAppBackend/models"
-	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/jackc/pgx/v5"
+	"github.com/willtrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/services"
 )
 
 func (q *PgxQueries) CreateTab(ctx context.Context, data *models.TabCreate, status models.TabStatus) error {
@@ -363,7 +363,7 @@ func (q *PgxQueries) GetTabs(ctx context.Context, shopId int) ([]models.TabOverv
 	return tabs, nil
 }
 
-func (q *PgxQueries) GetTabById(ctx context.Context, shopId int, tabId int) (models.Tab, error) {
+func (q *PgxQueries) GetTabById(ctx context.Context, shopId int, tabId int) (*models.Tab, error) {
 	rows, err := q.tx.Query(ctx, `
     SELECT tabs.*, 
       EXISTS(
@@ -423,12 +423,12 @@ func (q *PgxQueries) GetTabById(ctx context.Context, shopId int, tabId int) (mod
 		})
 
 	if err != nil {
-		return models.Tab{}, handlePgxError(err)
+		return nil, handlePgxError(err)
 	}
 
-	tab, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByNameLax[models.Tab])
+	tab, err := pgx.CollectExactlyOneRow(rows, pgx.RowToAddrOfStructByNameLax[models.Tab])
 	if err != nil {
-		return models.Tab{}, handlePgxError(err)
+		return nil, handlePgxError(err)
 	}
 	return tab, nil
 }
@@ -473,7 +473,7 @@ func (q *PgxQueries) setTabUsers(ctx context.Context, shopId int, tabId int, ema
 	return nil
 }
 
-func (q *PgxQueries) setTabLocations(ctx context.Context, shopId int, tabId int, locationIds []int) error {
+func (q *PgxQueries) setTabLocations(ctx context.Context, shopId int, tabId int, locationIds []uint) error {
 	_, err := q.tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_tab_locations (LIKE tab_locations INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {
@@ -507,7 +507,7 @@ func (q *PgxQueries) setTabLocations(ctx context.Context, shopId int, tabId int,
 	return nil
 }
 
-func (q *PgxQueries) SetTabUpdateLocations(ctx context.Context, shopId int, tabId int, locationIds []int) error {
+func (q *PgxQueries) SetTabUpdateLocations(ctx context.Context, shopId int, tabId int, locationIds []uint) error {
 	_, err := q.tx.Exec(ctx, `
     CREATE TEMPORARY TABLE _temp_upsert_tab_update_locations (LIKE tab_update_locations INCLUDING ALL ) ON COMMIT DROP`)
 	if err != nil {

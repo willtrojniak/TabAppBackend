@@ -3,9 +3,9 @@ package db
 import (
 	"context"
 
-	"github.com/WilliamTrojniak/TabAppBackend/models"
-	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/jackc/pgx/v5"
+	"github.com/willtrojniak/TabAppBackend/models"
+	"github.com/willtrojniak/TabAppBackend/services"
 )
 
 func (q *PgxQueries) CreateCategory(ctx context.Context, data *models.CategoryCreate) error {

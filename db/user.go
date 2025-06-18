@@ -3,8 +3,8 @@ package db
 import (
 	"context"
 
-	"github.com/WilliamTrojniak/TabAppBackend/models"
 	"github.com/jackc/pgx/v5"
+	"github.com/willtrojniak/TabAppBackend/models"
 )
 
 func (q *PgxQueries) CreateUser(ctx context.Context, data *models.UserCreate) (*models.User, error) {

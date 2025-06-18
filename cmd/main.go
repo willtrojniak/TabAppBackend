@@ -7,12 +7,12 @@ import (
 	"log"
 	"log/slog"
 
-	"github.com/WilliamTrojniak/TabAppBackend/cmd/api"
-	"github.com/WilliamTrojniak/TabAppBackend/db"
-	"github.com/WilliamTrojniak/TabAppBackend/env"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/willtrojniak/TabAppBackend/cmd/api"
+	"github.com/willtrojniak/TabAppBackend/db"
+	"github.com/willtrojniak/TabAppBackend/env"
 )
 
 var logLevels = map[string]slog.Level{

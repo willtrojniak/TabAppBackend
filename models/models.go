@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/civil"
-	"github.com/WilliamTrojniak/TabAppBackend/services"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/willtrojniak/TabAppBackend/services"
 )
 
 var Validate *validator.Validate
