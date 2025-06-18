@@ -15,7 +15,7 @@ ENV GOCACHE=/root/.cache/go-build
 ARG ENV
 RUN --mount=type=cache,target="/root/.cach/go-build" GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -v -o ./bin/api -ldflags "-X github.com/willtrojniak/TabAppBackend/env.EXT_ENVIRONMENT=${ENV}" ./cmd/main.go
 
-FROM debian:bookworm
+FROM --platform=$BUILDPLATFORM debian:bookworm
 RUN apt update
 RUN apt install ca-certificates -y
 RUN update-ca-certificates
