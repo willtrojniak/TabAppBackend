@@ -24,5 +24,5 @@ jobs:
 
     - name: Build and push the Docker image
       run: |
-        docker build --tag ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}:latest .
-        docker push ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}:latest
+        docker build --tag ${{ vars.REGISTRY }}/${{ github.repository%/* }}/${{ vars.IMAGE_NAME }}:latest .
+        docker push ${{ vars.REGISTRY }}/${{ github.repository%/* }}/${{ vars.IMAGE_NAME }}:latest
