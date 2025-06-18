@@ -8,11 +8,17 @@ COPY . .
 FROM build_base AS build_migrate
 ENV GOCACHE=/root/.cache/go-build
 ARG ENV
+ARG TARGETOS
+ARG TARGETARCH
+RUN echo "Building $TARGETOS/$TARGETARCH-$ENV"
 RUN --mount=type=cache,target="/root/.cach/go-build" GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -v -o ./bin/migrate -ldflags "-X github.com/willtrojniak/TabAppBackend/env.EXT_ENVIRONMENT=${ENV}" ./cmd/migrate/main.go
 
 FROM build_base AS build
 ENV GOCACHE=/root/.cache/go-build
 ARG ENV
+ARG TARGETOS
+ARG TARGETARCH
+RUN echo "Building $TARGETOS/$TARGETARCH-$ENV"
 RUN --mount=type=cache,target="/root/.cach/go-build" GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -v -o ./bin/api -ldflags "-X github.com/willtrojniak/TabAppBackend/env.EXT_ENVIRONMENT=${ENV}" ./cmd/main.go
 
 FROM debian:bookworm
