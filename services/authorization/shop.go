@@ -43,11 +43,11 @@ const (
 )
 
 const (
-	ROLE_SHOP_MANAGE_ITEMS     uint32 = 1 << 0
-	ROLE_SHOP_MANAGE_TABS      uint32 = (1 << 1) | ROLE_SHOP_READ_TABS
-	ROLE_SHOP_MANAGE_ORDERS    uint32 = (1 << 2) | ROLE_SHOP_READ_TABS
-	ROLE_SHOP_READ_TABS        uint32 = 1 << 3
-	ROLE_SHOP_MANAGE_LOCATIONS uint32 = 1 << 4
+	ROLE_SHOP_MANAGE_ITEMS     uint32 = 1 << 0 // 1
+	ROLE_SHOP_MANAGE_TABS      uint32 = 1 << 1 // 2
+	ROLE_SHOP_MANAGE_ORDERS    uint32 = 1 << 2 // 4
+	ROLE_SHOP_READ_TABS        uint32 = 1 << 3 // 8
+	ROLE_SHOP_MANAGE_LOCATIONS uint32 = 1 << 4 // 16
 )
 
 var shopAuthorizeActionFns authorizeActionMap[models.Shop] = authorizeActionMap[models.Shop]{

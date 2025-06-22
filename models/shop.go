@@ -39,8 +39,8 @@ type GetShopsQueryParams struct {
 }
 
 type ShopUserCreate struct {
-	Email string `json:"email" db:"email" validate:"required,email,max=64"`
-	Roles uint32 `json:"roles" db:"roles" validate:"required,gte=1"`
+	Email string  `json:"email" db:"email" validate:"required,email,max=64"`
+	Roles *uint32 `json:"roles" db:"roles" validate:"required"`
 }
 
 type ShopUser struct {
