@@ -24,7 +24,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postresql/data
+      - pgdata:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=db
       - POSTGRES_USER_FILE=/run/secrets/postgres_user

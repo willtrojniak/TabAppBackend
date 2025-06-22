@@ -122,12 +122,8 @@ func (h *Handler) handleGetShops(w http.ResponseWriter, r *http.Request, session
 	}
 
 	if rawParams.Has(pendingKey) {
-		if pending, err := strconv.ParseBool(rawParams.Get(pendingKey)); err == nil {
-			params.IsPending = &pending
-			if params.IsMember == nil {
-				isMember := true
-				params.IsMember = &isMember
-			}
+		if isPending, err := strconv.ParseBool(rawParams.Get(pendingKey)); err == nil {
+			params.IsPending = &isPending
 			params.UserId = &session.UserId
 		}
 	}
