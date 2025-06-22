@@ -40,7 +40,7 @@ func (q *PgxQueries) GetShops(ctx context.Context, params *models.GetShopsQueryP
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
     LEFT JOIN shop_users ON shops.id = shop_users.shop_id
     WHERE ((@isMember::boolean is NULL) OR (((@userId = shop_users.user_id AND shop_users.confirmed) OR @userId = shops.owner_id) = @isMember))
-    AND ((@pending::boolean is NULL) OR ((@userId = shop_users.user_id AND shop_users.confirmed != @pending) OR ((@userId = shops.owner_id) != @pending))) 
+    AND ((@pending::boolean is NULL) OR ((@userId = shop_users.user_id AND shop_users.confirmed != @pending) OR ((NOT @pending) AND ((@userId = shops.owner_id) != @pending)))) 
     GROUP BY shops.id
     ORDER BY shops.name
     LIMIT @limit OFFSET @offset`,
