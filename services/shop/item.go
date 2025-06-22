@@ -23,7 +23,7 @@ func (h *Handler) CreateItem(ctx context.Context, session *sessions.AuthedSessio
 }
 
 func (h *Handler) GetItems(ctx context.Context, session *sessions.AuthedSession, shopId int) (items []models.ItemOverview, err error) {
-	err = WithAuthorizeShopAction(ctx, h.store, session, shopId, authorization.SHOP_ACTION_CREATE_ITEM, func(pq *db.PgxQueries, user *models.User, shop *models.Shop) error {
+	err = WithAuthorizeShopAction(ctx, h.store, session, shopId, authorization.SHOP_ACTION_READ_ITEMS, func(pq *db.PgxQueries, user *models.User, shop *models.Shop) error {
 		items, err = pq.GetItems(ctx, shopId)
 		return err
 	})
@@ -44,7 +44,7 @@ func (h *Handler) UpdateItem(ctx context.Context, session *sessions.AuthedSessio
 }
 
 func (h *Handler) GetItem(ctx context.Context, session *sessions.AuthedSession, shopId int, itemId int) (item *models.Item, err error) {
-	err = WithAuthorizeShopAction(ctx, h.store, session, shopId, authorization.SHOP_ACTION_CREATE_ITEM, func(pq *db.PgxQueries, user *models.User, shop *models.Shop) error {
+	err = WithAuthorizeShopAction(ctx, h.store, session, shopId, authorization.SHOP_ACTION_READ_ITEM, func(pq *db.PgxQueries, user *models.User, shop *models.Shop) error {
 		item, err = pq.GetItem(ctx, shopId, itemId)
 		return err
 	})
