@@ -133,9 +133,6 @@ func (h *Handler) handleGetShops(w http.ResponseWriter, r *http.Request, session
 		h.handleError(w, err)
 		return
 	}
-	if params.IsMember != nil && params.IsPending != nil {
-		h.logger.Debug("Get Shops", "userid", *params.UserId, "isMember", *params.IsMember, "IsPending", *params.IsPending, "result", shops)
-	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(shops)
