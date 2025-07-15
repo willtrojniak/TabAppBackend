@@ -16,8 +16,6 @@ services:
       - base.env
       - dev.env
       - prod.env
-    volumes:
-      - ./cmd/migrate/migrations:/migrations
   db:
     image: postgres:12.19-alpine3.20
     restart: always
