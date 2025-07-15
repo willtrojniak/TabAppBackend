@@ -35,6 +35,7 @@ func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
+	h.logger.Debug("Handling Update User")
 	h.sessions.WithAuthedSession(func(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
 		data := models.UserUpdate{}
 		err := models.ReadRequestJson(r, &data)
@@ -42,11 +43,14 @@ func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 			h.handleError(w, err)
 			return
 		}
+		if *data.PreferredName == "" {
+			data.PreferredName = nil
+		}
 
 		err = h.UpdateUser(r.Context(), session, session.UserId, &data)
 		if err != nil {
 			h.handleError(w, err)
 			return
 		}
-	})
+	})(w, r)
 }

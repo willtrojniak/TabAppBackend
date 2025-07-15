@@ -27,6 +27,7 @@ RUN apt install ca-certificates -y
 RUN update-ca-certificates
 COPY --from=build_migrate /usr/src/app/bin/migrate /bin/migrate
 COPY --from=build /usr/src/app/bin/api /bin/api
+COPY resources resources
 EXPOSE 3000
 CMD ["/bin/api"]
 

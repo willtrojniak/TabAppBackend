@@ -11,30 +11,38 @@ import (
 	"github.com/willtrojniak/TabAppBackend/db"
 	"github.com/willtrojniak/TabAppBackend/services"
 	"github.com/willtrojniak/TabAppBackend/services/auth"
+	"github.com/willtrojniak/TabAppBackend/services/events"
 	"github.com/willtrojniak/TabAppBackend/services/sessions"
 	"github.com/willtrojniak/TabAppBackend/services/shop"
 	"github.com/willtrojniak/TabAppBackend/services/user"
 )
 
 type APIServer struct {
-	addr  string
-	store *db.PgxStore
-	cache *redis.Client
+	addr   string
+	store  *db.PgxStore
+	cache  *redis.Client
+	events *events.EventDispatcher
 }
 
 type Handler interface {
 	RegisterRoutes(http.ServeMux)
 }
 
-func NewAPIServer(addr string, store *db.PgxStore, cache *redis.Client) *APIServer {
+func NewAPIServer(
+	addr string,
+	store *db.PgxStore,
+	cache *redis.Client,
+	events *events.EventDispatcher) *APIServer {
 	return &APIServer{
-		addr:  addr,
-		store: store,
-		cache: cache,
+		addr:   addr,
+		store:  store,
+		cache:  cache,
+		events: events,
 	}
 }
 
 func (s *APIServer) Run() error {
+
 	sessionStore := cache.NewRedisCache(s.cache)
 	sessionManager := sessions.New(sessionStore, time.Hour*24*30, time.Hour*1, services.HandleHttpError, slog.Default())
 	userHandler := user.NewHandler(s.store, sessionManager, services.HandleHttpError, slog.Default())
@@ -44,7 +52,7 @@ func (s *APIServer) Run() error {
 		log.Fatal("Failed to initialize auth handler")
 	}
 
-	shopHandler := shop.NewHandler(s.store, sessionManager, services.HandleHttpError, slog.Default())
+	shopHandler := shop.NewHandler(s.store, sessionManager, s.events, services.HandleHttpError, slog.Default())
 
 	router := http.NewServeMux()
 	v1 := http.NewServeMux()

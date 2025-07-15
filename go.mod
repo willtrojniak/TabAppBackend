@@ -1,6 +1,6 @@
 module github.com/willtrojniak/TabAppBackend
 
-go 1.22.4
+go 1.24.3
 
 require (
 	cloud.google.com/go v0.115.0

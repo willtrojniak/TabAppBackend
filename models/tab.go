@@ -180,3 +180,14 @@ func TabUpdateStructLevelValidation(sl validator.StructLevel) {
 		sl.ReportError(data.PaymentDetails, tag, field.Name, "charstringformat", "")
 	}
 }
+
+func (b *Bill) Total() float32 {
+	var total float32
+	for _, item := range b.Items {
+		total += (*item.BasePrice) * float32(item.Quantity)
+		for _, variant := range item.Variants {
+			total += (*variant.Price) * float32(variant.Quantity)
+		}
+	}
+	return total
+}
