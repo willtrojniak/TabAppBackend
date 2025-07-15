@@ -28,21 +28,21 @@ const (
 
 var tabAuthorizeActionFns authorizeActionMap[TabTarget] = authorizeActionMap[TabTarget]{
 	TAB_ACTION_READ: func(s *models.User, t *TabTarget) bool {
-		return s.Id == t.Tab.OwnerId || hasRole(s, t.Shop, ROLE_SHOP_READ_TABS)
+		return s.Id == t.Tab.OwnerId || HasRole(s, t.Shop, ROLE_SHOP_READ_TABS)
 	},
 	TAB_ACTION_REQUEST_UPDATE: func(s *models.User, t *TabTarget) bool {
-		return s.Id == t.Tab.OwnerId || hasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS)
+		return s.Id == t.Tab.OwnerId || HasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS)
 	},
 	TAB_ACTION_UPDATE: func(s *models.User, t *TabTarget) bool {
-		return hasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS) || (s.Id == t.Tab.OwnerId && t.Tab.Status == models.TAB_STATUS_PENDING.String())
+		return HasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS) || (s.Id == t.Tab.OwnerId && t.Tab.Status == models.TAB_STATUS_PENDING.String())
 	},
-	TAB_ACTION_APPROVE:    func(s *models.User, t *TabTarget) bool { return hasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS) },
-	TAB_ACTION_CLOSE:      func(s *models.User, t *TabTarget) bool { return hasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS) },
-	TAB_ACTION_CLOSE_BILL: func(s *models.User, t *TabTarget) bool { return hasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS) },
+	TAB_ACTION_APPROVE:    func(s *models.User, t *TabTarget) bool { return HasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS) },
+	TAB_ACTION_CLOSE:      func(s *models.User, t *TabTarget) bool { return HasRole(s, t.Shop, ROLE_SHOP_MANAGE_TABS) },
+	TAB_ACTION_CLOSE_BILL: func(s *models.User, t *TabTarget) bool { return HasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS) },
 	TAB_ACTION_ADD_ORDER: func(s *models.User, t *TabTarget) bool {
-		return (hasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS) && t.Tab.IsActive()) || hasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS|ROLE_SHOP_MANAGE_TABS)
+		return (HasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS) && t.Tab.IsActive()) || HasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS|ROLE_SHOP_MANAGE_TABS)
 	},
 	TAB_ACTION_REMOVE_ORDER: func(s *models.User, t *TabTarget) bool {
-		return (hasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS) && t.Tab.IsActive()) || hasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS|ROLE_SHOP_MANAGE_TABS)
+		return (HasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS) && t.Tab.IsActive()) || HasRole(s, t.Shop, ROLE_SHOP_MANAGE_ORDERS|ROLE_SHOP_MANAGE_TABS)
 	},
 }

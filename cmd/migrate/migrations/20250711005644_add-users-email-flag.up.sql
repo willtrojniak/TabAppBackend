@@ -1,0 +1,2 @@
+ALTER TABLE users
+  ADD COLUMN "enable_emails" BOOLEAN NOT NULL DEFAULT TRUE;

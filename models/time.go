@@ -53,7 +53,7 @@ func (d *Time) String() string {
 }
 
 func (d *Time) UnmarshalJSON(b []byte) (err error) {
-	var v interface{}
+	var v any
 	if err := json.Unmarshal(b, &v); err != nil {
 		return err
 	}

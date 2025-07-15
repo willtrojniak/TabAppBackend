@@ -3,7 +3,8 @@ package models
 import "time"
 
 type UserUpdate struct {
-	PreferredName *string `json:"preferred_name" db:"preferred_name" validate:"omitempty,min=2,max=64"`
+	PreferredName *string `json:"preferred_name" db:"preferred_name" validate:"omitempty,max=64"`
+	EnableEmails  bool    `json:"enable_emails" db:"enable_emails"`
 }
 
 type UserCreate struct {

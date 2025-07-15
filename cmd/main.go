@@ -13,6 +13,8 @@ import (
 	"github.com/willtrojniak/TabAppBackend/cmd/api"
 	"github.com/willtrojniak/TabAppBackend/db"
 	"github.com/willtrojniak/TabAppBackend/env"
+	"github.com/willtrojniak/TabAppBackend/services/events"
+	"github.com/willtrojniak/TabAppBackend/services/notifications"
 )
 
 var logLevels = map[string]slog.Level{
@@ -41,8 +43,18 @@ func main() {
 	}
 	redis := redis.NewClient(&opts)
 
+	eventDispatcher := events.NewEventDispatcher()
+
+	notificationsService := notifications.NewNotificationService(slog.Default(), eventDispatcher)
+	notificationsService.RegisterDriver(notifications.NewMailDriver(
+		env.Envs.EMAIL_CLIENT_USER,
+		env.Envs.EMAIL_CLIENT_PASSWORD,
+		env.Envs.EMAIL_CLIENT_HOST,
+		env.Envs.EMAIL_CLIENT_PORT),
+		env.Envs.EMAIL_CLIENT_ENABLED)
+
 	gob.Register(uuid.UUID{})
-	server := api.NewAPIServer(":3000", pg, redis)
+	server := api.NewAPIServer(":3000", pg, redis, eventDispatcher)
 	if err := server.Run(); err != nil {
 		log.Fatal(err)
 	}

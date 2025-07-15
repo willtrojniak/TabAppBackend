@@ -8,6 +8,7 @@ import (
 	"github.com/willtrojniak/TabAppBackend/models"
 	"github.com/willtrojniak/TabAppBackend/services"
 	"github.com/willtrojniak/TabAppBackend/services/authorization"
+	"github.com/willtrojniak/TabAppBackend/services/events"
 	"github.com/willtrojniak/TabAppBackend/services/sessions"
 )
 
@@ -27,7 +28,24 @@ func (h *Handler) CreateTab(ctx context.Context, session *sessions.AuthedSession
 			status = models.TAB_STATUS_CONFIRMED
 		}
 
-		return pq.CreateTab(ctx, data, status)
+		tabId, err := pq.CreateTab(ctx, data, status)
+		if err != nil {
+			return err
+		}
+
+		tab, err := pq.GetTabById(ctx, int(shop.Id), tabId)
+		if err != nil {
+			return nil
+		}
+
+		owner, err := pq.GetUser(ctx, data.OwnerId)
+		if err != nil {
+			return nil
+		}
+
+		events.Dispatch(h.eventDispatcher, events.TabCreateEvent{Tab: tab, Shop: shop, TabOwner: owner})
+
+		return nil
 	})
 }
 
@@ -56,11 +74,28 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.AuthedSession
 		// Otherwise:
 		// Check if part of the tab data has changed and request updates
 		if !(reflect.DeepEqual(tab.TabBase, data.TabBase) || !reflect.DeepEqual(tabLocationIds, data.LocationIds)) {
-			return pq.SetTabUpdates(ctx, shopId, tabId, data)
+			err = pq.SetTabUpdates(ctx, shopId, tabId, data)
 		} else {
 			// If not, only update the people on the tab
-			return pq.SetTabUsers(ctx, shopId, tabId, data.VerificationList)
+			err = pq.SetTabUsers(ctx, shopId, tabId, data.VerificationList)
 		}
+
+		if err != nil {
+			return err
+		}
+
+		owner, err := pq.GetUser(ctx, tab.OwnerId)
+		if err != nil {
+			return err
+		}
+
+		tab, err = pq.GetTabById(ctx, shopId, tabId)
+		if err != nil {
+			return err
+		}
+
+		events.Dispatch(h.eventDispatcher, events.TabUpdateEvent{Shop: shop, Tab: tab, TabOwner: owner})
+		return nil
 	})
 }
 
@@ -70,7 +105,18 @@ func (h *Handler) ApproveTab(ctx context.Context, session *sessions.AuthedSessio
 			return services.NewDataConflictServiceError(nil)
 		}
 
-		return pq.ApproveTab(ctx, shopId, tabId)
+		err := pq.ApproveTab(ctx, shopId, tabId)
+		if err != nil {
+			return err
+		}
+
+		owner, err := pq.GetUser(ctx, tab.OwnerId)
+		if err != nil {
+			return err
+		}
+		events.Dispatch(h.eventDispatcher, events.TabApproveEvent{Shop: shop, Tab: tab, TabOwner: owner})
+
+		return nil
 	})
 }
 
@@ -80,13 +126,47 @@ func (h *Handler) CloseTab(ctx context.Context, session *sessions.AuthedSession,
 			return services.NewDataConflictServiceError(nil)
 		}
 
-		return pq.CloseTab(ctx, shopId, tabId)
+		err := pq.CloseTab(ctx, shopId, tabId)
+		if err != nil {
+			return err
+		}
+
+		owner, err := pq.GetUser(ctx, tab.OwnerId)
+		if err != nil {
+			return err
+		}
+
+		events.Dispatch(h.eventDispatcher, events.TabCloseEvent{Shop: shop, Tab: tab, TabOwner: owner})
+		return nil
 	})
 }
 
 func (h *Handler) MarkTabBillPaid(ctx context.Context, session *sessions.AuthedSession, shopId int, tabId int, billId int) error {
 	return WithAuthorizeTabAction(ctx, h.store, session, shopId, tabId, authorization.TAB_ACTION_CLOSE_BILL, func(pq *db.PgxQueries, user *models.User, shop *models.Shop, tab *models.Tab) error {
-		return pq.MarkTabBillPaid(ctx, shopId, tabId, billId)
+		err := pq.MarkTabBillPaid(ctx, shopId, tabId, billId)
+		if err != nil {
+			return err
+		}
+
+		tab, err = pq.GetTabById(ctx, shopId, tabId)
+		if err != nil {
+			return err
+		}
+
+		owner, err := pq.GetUser(ctx, tab.OwnerId)
+		if err != nil {
+			return err
+		}
+
+		var bill *models.Bill
+		for _, b := range tab.Bills {
+			if b.Id == billId {
+				bill = &b
+			}
+		}
+
+		events.Dispatch(h.eventDispatcher, events.TabBillPaidEvent{Shop: shop, Tab: tab, Bill: bill, TabOwner: owner})
+		return nil
 	})
 }
 

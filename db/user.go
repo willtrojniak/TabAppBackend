@@ -39,7 +39,14 @@ func (q *PgxQueries) GetUser(ctx context.Context, userId string) (*models.User, 
 }
 
 func (q *PgxQueries) UpdateUser(ctx context.Context, userId string, data *models.UserUpdate) error {
-	_, err := q.tx.Exec(ctx, `UPDATE users SET preferred_name = $1 WHERE id = $2`, data.PreferredName, userId)
+	_, err := q.tx.Exec(ctx, `UPDATE users SET 
+		(preferred_name, enable_emails) = (@preferredName, @enableEmails)
+		WHERE id = @userId`,
+		pgx.NamedArgs{
+			"preferredName": data.PreferredName,
+			"enableEmails":  data.EnableEmails,
+			"userId":        userId,
+		})
 
 	if err != nil {
 		return handlePgxError(err)

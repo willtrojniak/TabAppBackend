@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New Tab Request</title>
+</head>
+
+<body style="font-family: sans-serif; text-align: center;">
+  <h1>New Tab Request</h1>
+  <h2 style="margin-bottom: 1.8rem;">
+    A new tab request has been submitted for {{.ShopName}}
+  </h2>
+  <a href="{{.TabURL}}">
+    <div style="
+      display: inline-block;
+      border: none;
+      background-color: #204c39;
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 2rem;
+      font-size: 1rem;
+      margin-bottom: 1.8rem;
+    ">
+      <b>See on CafeTrackr</b>
+    </div>
+  </a>
+  <div style="max-width: 80%; width: fit-content; margin: 0 auto;">
+    <div style="border: 1px solid black; border-radius: 1rem; margin: 0 auto 1.8rem; width: 100%; overflow: hidden;">
+      <table>
+        <tr>
+          <th style="text-align: right; padding: 1rem;">Display Name</th>
+          <td style="text-align: left; padding: 1rem;">{{.DisplayName}}</td>
+        </tr>
+        <tr>
+          <th style="text-align: right; padding: 1rem;">Requesting Organization</th>
+          <td style="text-align: left; padding: 1rem;">{{.RequestingOrg}}</td>
+        </tr>
+        <tr>
+          <th style="text-align: right; padding: 1rem;">Contact</th>
+          <td style="text-align: left; padding: 1rem;">{{.RequestingContact}}</td>
+        </tr>
+        <tr>
+          <th style="text-align: right; padding: 1rem;">Contact Email</th>
+          <td style="text-align: left; padding: 1rem;">{{.RequestingEmail}}</td>
+        </tr>
+        <tr>
+          <th colspan="100%" style="text-align: center; padding: 1rem;">...</th>
+        </tr>
+        <tr>
+          <th style="text-align: right; padding: 1rem;">Start Date</th>
+          <td style="text-align: left; padding: 1rem;">{{.StartDate}}</td>
+        </tr>
+        <tr>
+          <th style="text-align: right; padding: 1rem;">End Date</th>
+          <td style="text-align: left; padding: 1rem;">{{.EndDate}}</td>
+        </tr>
+        <tr>
+          <th style="text-align: right; padding: 1rem;">Start Time</th>
+          <td style="text-align: left; padding: 1rem;">{{.StartTime}}</td>
+        </tr>
+        <tr>
+          <th style="text-align: right; padding: 1rem;">End Time</th>
+          <td style="text-align: left; padding: 1rem;">{{.EndTime}}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  <div style="font-size: 1rem; font-weight: lighter; margin-bottom: 1.8rem;">
+    View the full details and approve or deny the request on <a href="{{.TabURL}}" style="
+    text-decoration: underline;
+    cursor: pointer;
+    color: blue;
+        ">CafeTrackr</a>
+  </div>
+</body>
+
+</html>

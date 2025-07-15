@@ -86,11 +86,19 @@ func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (*models.Shop,
 		return nil, handlePgxError(err)
 	}
 
+	owner, err := q.GetUser(ctx, shop.OwnerId)
+	if err != nil {
+		return nil, err
+	}
+
 	users, err := q.GetShopUsers(ctx, shopId)
 	if err != nil {
 		return nil, err
 	}
-	shop.Users = users
+
+	shop.Users = make([]models.ShopUser, 0, len(users)+1)
+	shop.Users = append(shop.Users, models.ShopUser{User: *owner, IsConfirmed: true, IsOwner: true})
+	shop.Users = append(shop.Users, users...)
 
 	return shop, nil
 }

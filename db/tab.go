@@ -10,8 +10,8 @@ import (
 	"github.com/willtrojniak/TabAppBackend/services"
 )
 
-func (q *PgxQueries) CreateTab(ctx context.Context, data *models.TabCreate, status models.TabStatus) error {
-	return q.WithTx(ctx, func(q *PgxQueries) error {
+func (q *PgxQueries) CreateTab(ctx context.Context, data *models.TabCreate, status models.TabStatus) (int, error) {
+	return WithTxRet(ctx, q, func(q *PgxQueries) (int, error) {
 		row := q.tx.QueryRow(ctx, `
     INSERT INTO tabs 
       (shop_id, owner_id, payment_method, organization, display_name,
@@ -42,19 +42,19 @@ func (q *PgxQueries) CreateTab(ctx context.Context, data *models.TabCreate, stat
 		var tabId int
 		err := row.Scan(&tabId)
 		if err != nil {
-			return handlePgxError(err)
+			return -1, handlePgxError(err)
 		}
 
 		err = q.setTabUsers(ctx, data.ShopId, tabId, data.VerificationList)
 		if err != nil {
-			return err
+			return -1, err
 		}
 
 		err = q.setTabLocations(ctx, data.ShopId, tabId, data.LocationIds)
 		if err != nil {
-			return err
+			return -1, err
 		}
-		return nil
+		return tabId, nil
 	})
 }
 

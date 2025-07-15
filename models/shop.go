@@ -48,6 +48,7 @@ type ShopUser struct {
 	Roles       uint32    `json:"roles" db:"roles"`
 	IsConfirmed bool      `json:"confirmed" db:"confirmed"`
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	IsOwner     bool      `json:"is_owner" db:"is_owner"`
 }
 
 type LocationUpdate struct {

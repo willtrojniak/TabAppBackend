@@ -8,22 +8,25 @@ import (
 	"github.com/willtrojniak/TabAppBackend/models"
 	"github.com/willtrojniak/TabAppBackend/services"
 	"github.com/willtrojniak/TabAppBackend/services/authorization"
+	"github.com/willtrojniak/TabAppBackend/services/events"
 	"github.com/willtrojniak/TabAppBackend/services/sessions"
 )
 
 type Handler struct {
-	logger      *slog.Logger
-	store       *db.PgxStore
-	sessions    *sessions.Handler
-	handleError services.HTTPErrorHandler
+	logger          *slog.Logger
+	store           *db.PgxStore
+	sessions        *sessions.Handler
+	eventDispatcher *events.EventDispatcher
+	handleError     services.HTTPErrorHandler
 }
 
-func NewHandler(store *db.PgxStore, sessions *sessions.Handler, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
+func NewHandler(store *db.PgxStore, sessions *sessions.Handler, eventDispatcher *events.EventDispatcher, handleError services.HTTPErrorHandler, logger *slog.Logger) *Handler {
 	return &Handler{
-		logger:      logger,
-		sessions:    sessions,
-		store:       store,
-		handleError: handleError,
+		logger:          logger,
+		sessions:        sessions,
+		store:           store,
+		eventDispatcher: eventDispatcher,
+		handleError:     handleError,
 	}
 }
 
