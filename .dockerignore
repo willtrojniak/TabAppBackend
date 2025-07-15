@@ -2,5 +2,4 @@
 compose.yaml
 Dockerfile
 Makefile
-migrations
 *.env
