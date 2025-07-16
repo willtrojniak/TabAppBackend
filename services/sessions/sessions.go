@@ -279,6 +279,10 @@ func (s *Handler) getSessionFromStore(ctx context.Context, id string) (*Session,
 	return session, nil
 }
 
+func (s *Session) IsAuthed() bool {
+	_, err := s.Authed()
+	return err == nil
+}
 func (s *Session) Authed() (*AuthedSession, error) {
 	if s.data.UserId == "" {
 		return nil, services.NewUnauthenticatedServiceError(nil)

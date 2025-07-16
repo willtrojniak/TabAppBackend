@@ -16,6 +16,8 @@ type config struct {
 	UI_URI                      string
 	OAUTH2_GOOGLE_CLIENT_ID     string
 	OAUTH2_GOOGLE_CLIENT_SECRET string
+	OAUTH2_SLACK_CLIENT_ID      string
+	OAUTH2_SLACK_CLIENT_SECRET  string
 	POSTGRES_USER               string
 	POSTGRES_PASSWORD           string
 	POSTGRES_HOST               string
