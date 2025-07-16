@@ -52,6 +52,7 @@ func main() {
 		env.Envs.EMAIL_CLIENT_HOST,
 		env.Envs.EMAIL_CLIENT_PORT),
 		env.Envs.EMAIL_CLIENT_ENABLED)
+	notificationsService.RegisterDriver(notifications.NewSlackDriver(), env.Envs.SLACK_CLIENT_ENABLED)
 
 	gob.Register(uuid.UUID{})
 	server := api.NewAPIServer(":3000", pg, redis, eventDispatcher)

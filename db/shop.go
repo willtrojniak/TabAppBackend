@@ -64,7 +64,7 @@ func (q *PgxQueries) GetShops(ctx context.Context, params *models.GetShopsQueryP
 
 func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (*models.Shop, error) {
 	row, err := q.tx.Query(ctx,
-		`SELECT shops.*, 
+		`SELECT shops.*, shop_slack_tokens.slack_access_token,
       array_remove(array_agg(payment_methods.method), NULL) as payment_methods,
       (SELECT COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
        FROM locations
@@ -72,8 +72,9 @@ func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (*models.Shop,
       ) AS locations
     FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
+		LEFT JOIN shop_slack_tokens on shops.id = shop_slack_tokens.shop_id
     WHERE shops.id = @shopId
-    GROUP BY shops.id`,
+    GROUP BY shops.id, shop_slack_tokens.shop_id`,
 		pgx.NamedArgs{
 			"shopId": shopId,
 		})
@@ -282,4 +283,27 @@ func (pq *PgxQueries) GetShopUsers(ctx context.Context, shopId int) ([]models.Sh
 	}
 
 	return users, nil
+}
+
+func (pq *PgxQueries) AddShopSlackToken(ctx context.Context, shopId int, accessToken models.Token) error {
+	res, err := pq.tx.Exec(ctx, `
+		INSERT INTO shop_slack_tokens (shop_id, slack_access_token)
+    VALUES (@shopId, @slackAccessToken)
+    ON CONFLICT (shop_id) DO UPDATE
+    SET slack_access_token = excluded.slack_access_token
+    `,
+		pgx.NamedArgs{
+			"shopId":           shopId,
+			"slackAccessToken": accessToken,
+		})
+
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return handlePgxError(pgx.ErrNoRows)
+	}
+
+	return nil
 }

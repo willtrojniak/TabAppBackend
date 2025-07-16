@@ -19,16 +19,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type config struct {
-	oauth2.Config
-	*oidc.Provider
-}
-
 type Handler struct {
 	logger         *slog.Logger
 	handleError    services.HTTPErrorHandler
 	userHandler    *user.Handler
-	configs        map[string]config
+	googleCfg      oauth2.Config
+	googleProvider *oidc.Provider
 	sessionManager *sessions.Handler
 }
 
@@ -45,34 +41,17 @@ func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 	}
 
-	slackCfg := oauth2.Config{
-		ClientID:     env.Envs.OAUTH2_SLACK_CLIENT_ID,
-		ClientSecret: env.Envs.OAUTH2_SLACK_CLIENT_SECRET,
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://slack.com/oauth/v2/authorize",
-			TokenURL: "https://slack.com/api/oauth.v2.access",
-		},
-		RedirectURL: fmt.Sprintf("%v/auth/slack/callback", env.Envs.BASE_URI),
-		Scopes:      []string{"channels:read", "chat:write", "chat:write.public"},
-	}
-
 	return &Handler{
-		handleError: handleError,
-		logger:      logger,
-		userHandler: userHandler,
-		configs: map[string]config{
-			"google": {googleCfg, googleProvider},
-			"slack":  {slackCfg, nil},
-		},
+		handleError:    handleError,
+		logger:         logger,
+		userHandler:    userHandler,
+		googleCfg:      googleCfg,
+		googleProvider: googleProvider,
 		sessionManager: sessionManager,
 	}, nil
 }
 
-func (h *Handler) beginAuthorize(w http.ResponseWriter, r *http.Request, provider string) error {
-	cfg, ok := h.configs[provider]
-	if !ok {
-		return services.NewNotFoundServiceError(nil)
-	}
+func (h *Handler) BeginAuthorize(w http.ResponseWriter, r *http.Request, cfg *oauth2.Config) error {
 	state, err := randString(16)
 	if err != nil {
 		return err
@@ -93,15 +72,11 @@ func (h *Handler) beginAuthorize(w http.ResponseWriter, r *http.Request, provide
 	return nil
 }
 
-func (h *Handler) authorize(r *http.Request, provider string) (*oauth2.Token, error) {
-	cfg, ok := h.configs[provider]
-	if !ok {
-		return nil, services.NewNotFoundServiceError(nil)
-	}
-
+func (h *Handler) Authorize(r *http.Request, cfg *oauth2.Config) (*oauth2.Token, error) {
 	// Check that the CSRF token matches
 	state, err := r.Cookie("state")
 	if err != nil {
+		h.logger.Warn("Missing State Cookie")
 		return nil, services.NewInternalServiceError(err)
 	}
 
@@ -117,12 +92,7 @@ func (h *Handler) authorize(r *http.Request, provider string) (*oauth2.Token, er
 	return oauth2Token, nil
 }
 
-func (h *Handler) createUserFromToken(r *http.Request, token *oauth2.Token, provider string) (*models.User, error) {
-	cfg, ok := h.configs[provider]
-	if !ok || cfg.Provider == nil {
-		return nil, services.NewNotFoundServiceError(nil)
-	}
-
+func (h *Handler) createUserFromToken(r *http.Request, token *oauth2.Token, cfg *oauth2.Config, provider *oidc.Provider) (*models.User, error) {
 	// Get the id token from the JWT
 	rawIdToken, ok := token.Extra("id_token").(string)
 	if !ok {
@@ -131,7 +101,7 @@ func (h *Handler) createUserFromToken(r *http.Request, token *oauth2.Token, prov
 
 	// Verify the id token
 	oidcConfig := &oidc.Config{ClientID: cfg.ClientID}
-	verifier := cfg.Verifier(oidcConfig)
+	verifier := provider.Verifier(oidcConfig)
 
 	idToken, err := verifier.Verify(r.Context(), rawIdToken)
 	if err != nil {
@@ -155,7 +125,7 @@ func (h *Handler) createUserFromToken(r *http.Request, token *oauth2.Token, prov
 		EmailVerified bool   `json:"email_verified"`
 	}
 
-	userInfo, err := cfg.UserInfo(r.Context(), oauth2.StaticTokenSource(token))
+	userInfo, err := provider.UserInfo(r.Context(), oauth2.StaticTokenSource(token))
 	if err != nil {
 		return nil, services.NewInternalServiceError(err)
 	}
@@ -195,6 +165,7 @@ func setCallbackCookie(w http.ResponseWriter, r *http.Request, name string, valu
 	c := &http.Cookie{
 		Name:     name,
 		Value:    value,
+		Path:     "/",
 		MaxAge:   int(time.Hour.Seconds()),
 		Secure:   r.TLS != nil,
 		HttpOnly: true,

@@ -2,18 +2,17 @@ package notifications
 
 import (
 	"fmt"
-	"io/fs"
 	"net/smtp"
+	"slices"
 	"strings"
 
 	"github.com/willtrojniak/TabAppBackend/models"
 )
 
 type MailDriver struct {
-	from      string
-	addr      string
-	auth      smtp.Auth
-	templates fs.ReadFileFS // TODO: Compile-time filesystem
+	from string
+	addr string
+	auth smtp.Auth
 }
 
 func NewMailDriver(username, password, host, port string) *MailDriver {
@@ -30,11 +29,21 @@ func (driver *MailDriver) Name() string {
 	return "Mail"
 }
 
-func (driver *MailDriver) IsDisabledFor(user *models.User) bool {
+func (driver *MailDriver) isDisabledFor(user *models.User) bool {
 	return !user.EnableEmails
 }
 
-func (driver *MailDriver) Send(to []*models.User, n Notification) error {
+func (driver *MailDriver) NotifyShop(shop *models.Shop, n Notification) error {
+	to := slices.DeleteFunc(shop.ConfirmedUsers(), func(u *models.User) bool {
+		return n.IsDisabledFor(u, shop)
+	})
+
+	return driver.NotifyUsers(to, n)
+}
+
+func (driver *MailDriver) NotifyUsers(to []*models.User, n Notification) error {
+	to = slices.DeleteFunc(to, driver.isDisabledFor)
+
 	emails := make([]string, len(to))
 	for i, u := range to {
 		emails[i] = u.Email

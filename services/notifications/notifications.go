@@ -2,22 +2,21 @@ package notifications
 
 import (
 	"log/slog"
-	"slices"
 
 	"github.com/willtrojniak/TabAppBackend/models"
 	"github.com/willtrojniak/TabAppBackend/services/events"
 )
 
 type Notification interface {
-	IsDisabledFor(*models.User) bool
+	IsDisabledFor(*models.User, *models.Shop) bool
 	Subject() string
 	HTML() (string, error)
 }
 
 type Notifier interface {
 	Name() string
-	IsDisabledFor(to *models.User) bool
-	Send(to []*models.User, n Notification) error
+	NotifyUsers(to []*models.User, n Notification) error
+	NotifyShop(shop *models.Shop, n Notification) error
 }
 
 type NotificationService struct {
@@ -41,17 +40,29 @@ func (n *NotificationService) RegisterDriver(d Notifier, enabled bool) {
 	n.drivers[d] = enabled
 }
 
-func (n *NotificationService) Send(to []*models.User, notification Notification) {
-	to = slices.DeleteFunc(to, notification.IsDisabledFor)
-
+func (n *NotificationService) NotifyShop(shop *models.Shop, notification Notification) {
 	for driver, enabled := range n.drivers {
 		if !enabled {
 			continue
 		}
-		driverTo := slices.DeleteFunc(to, driver.IsDisabledFor)
 
 		go func() {
-			err := driver.Send(driverTo, notification)
+			err := driver.NotifyShop(shop, notification)
+			if err != nil {
+				n.logger.Warn("Error while sending shop notification.", "driver", driver.Name(), "err", err)
+			}
+		}()
+	}
+}
+
+func (n *NotificationService) NotifyUsers(to []*models.User, notification Notification) {
+	for driver, enabled := range n.drivers {
+		if !enabled {
+			continue
+		}
+
+		go func() {
+			err := driver.NotifyUsers(to, notification)
 			if err != nil {
 				n.logger.Warn("Error while sending notification.", "driver", driver.Name(), "err", err)
 			}

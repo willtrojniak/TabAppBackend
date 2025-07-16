@@ -26,8 +26,9 @@ type ShopOverview struct {
 
 type Shop struct {
 	ShopOverview
-	Locations []Location `json:"locations" db:"locations"`
-	Users     []ShopUser `json:"users" db:"users"`
+	Locations        []Location `json:"locations" db:"locations"`
+	Users            []ShopUser `json:"users" db:"users"`
+	SlackAccessToken *Token     `json:"-" db:"slack_access_token"`
 }
 
 type GetShopsQueryParams struct {
@@ -63,4 +64,14 @@ type LocationCreate struct {
 type Location struct {
 	Id uint `json:"id" db:"id" validate:"required,gte=1"`
 	LocationUpdate
+}
+
+func (shop *Shop) ConfirmedUsers() []*User {
+	var users []*User
+	for _, u := range shop.Users {
+		if u.IsConfirmed {
+			users = append(users, &u.User)
+		}
+	}
+	return users
 }

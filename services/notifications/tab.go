@@ -12,21 +12,11 @@ import (
 )
 
 type TabRequestNotification struct {
-	tab      *models.Tab
-	tabOwner *models.User
-	shop     *models.Shop
+	events.TabCreateEvent
 }
 
 type TabBillPaidNotification struct {
 	events.TabBillPaidEvent
-}
-
-func NewTabRequestNotification(tab *models.Tab, tabOwner *models.User, shop *models.Shop) *TabRequestNotification {
-	return &TabRequestNotification{
-		tab:      tab,
-		tabOwner: tabOwner,
-		shop:     shop,
-	}
 }
 
 func (n *NotificationService) onTabCreate(e events.TabCreateEvent) {
@@ -39,7 +29,7 @@ func (n *NotificationService) onTabCreate(e events.TabCreateEvent) {
 			to = append(to, &user.User)
 		}
 	}
-	n.Send(to, NewTabRequestNotification(e.Tab, e.TabOwner, e.Shop))
+	n.NotifyShop(e.Shop, &TabRequestNotification{e})
 }
 
 func (n *NotificationService) onTabBillPaid(e events.TabBillPaidEvent) {
@@ -50,17 +40,16 @@ func (n *NotificationService) onTabBillPaid(e events.TabBillPaidEvent) {
 		}
 	}
 
-	to = append(to, e.TabOwner)
-	n.Send(to, &TabBillPaidNotification{e})
+	n.NotifyShop(e.Shop, &TabBillPaidNotification{e})
+	n.NotifyUsers([]*models.User{e.TabOwner}, &TabBillPaidNotification{e})
 }
 
-func (n *TabRequestNotification) IsDisabledFor(*models.User) bool {
-	// FIXME: Add column for user to enable tab create notifications
-	return false
+func (n *TabRequestNotification) IsDisabledFor(u *models.User, s *models.Shop) bool {
+	return !authorization.HasRole(u, s, authorization.ROLE_SHOP_MANAGE_TABS)
 }
 
 func (n *TabRequestNotification) Subject() string {
-	return fmt.Sprintf("New Tab Request - %s", n.tab.DisplayName)
+	return fmt.Sprintf("New Tab Request - %s", n.Tab.DisplayName)
 }
 
 func (n *TabRequestNotification) HTML() (string, error) {
@@ -80,16 +69,16 @@ func (n *TabRequestNotification) HTML() (string, error) {
 	}
 
 	data := templateData{
-		ShopName:          n.shop.Name,
-		TabURL:            fmt.Sprintf("%s/shops/%v/tabs/%v", env.Envs.UI_URI, n.shop.Id, n.tab.Id),
-		DisplayName:       n.tab.DisplayName,
-		RequestingOrg:     n.tab.Organization,
-		RequestingContact: n.tabOwner.Name,
-		RequestingEmail:   n.tabOwner.Email,
-		StartDate:         fmt.Sprintf("%s %v, %v", n.tab.StartDate.Month.String(), n.tab.StartDate.Date.Day, n.tab.StartDate.Year),
-		EndDate:           fmt.Sprintf("%s %v, %v", n.tab.EndDate.Month.String(), n.tab.EndDate.Date.Day, n.tab.EndDate.Year),
-		StartTime:         n.tab.DailyStartTime.String(),
-		EndTime:           n.tab.DailyEndTime.String(),
+		ShopName:          n.Shop.Name,
+		TabURL:            fmt.Sprintf("%s/shops/%v/tabs/%v", env.Envs.UI_URI, n.Shop.Id, n.Tab.Id),
+		DisplayName:       n.Tab.DisplayName,
+		RequestingOrg:     n.Tab.Organization,
+		RequestingContact: n.TabOwner.Name,
+		RequestingEmail:   n.TabOwner.Email,
+		StartDate:         fmt.Sprintf("%s %v, %v", n.Tab.StartDate.Month.String(), n.Tab.StartDate.Date.Day, n.Tab.StartDate.Year),
+		EndDate:           fmt.Sprintf("%s %v, %v", n.Tab.EndDate.Month.String(), n.Tab.EndDate.Date.Day, n.Tab.EndDate.Year),
+		StartTime:         n.Tab.DailyStartTime.String(),
+		EndTime:           n.Tab.DailyEndTime.String(),
 	}
 
 	tplate, err := template.ParseFiles(templateName)
@@ -107,9 +96,8 @@ func (n *TabRequestNotification) HTML() (string, error) {
 
 }
 
-func (n *TabBillPaidNotification) IsDisabledFor(*models.User) bool {
-	// FIXME: Add column for user to enable tab create notifications
-	return false
+func (n *TabBillPaidNotification) IsDisabledFor(u *models.User, s *models.Shop) bool {
+	return !authorization.HasRole(u, s, authorization.ROLE_SHOP_MANAGE_TABS)
 }
 
 func (n *TabBillPaidNotification) Subject() string {

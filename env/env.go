@@ -14,6 +14,7 @@ import (
 type config struct {
 	BASE_URI                    string
 	UI_URI                      string
+	ENCRYPT_SECRET              string
 	OAUTH2_GOOGLE_CLIENT_ID     string
 	OAUTH2_GOOGLE_CLIENT_SECRET string
 	OAUTH2_SLACK_CLIENT_ID      string
@@ -29,6 +30,7 @@ type config struct {
 	EMAIL_CLIENT_USER           string
 	EMAIL_CLIENT_PASSWORD       string
 	EMAIL_CLIENT_ENABLED        bool
+	SLACK_CLIENT_ENABLED        bool
 }
 
 var Envs = getConfig()
