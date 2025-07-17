@@ -1,27 +1,36 @@
 package notifications
 
 import (
+	"bytes"
 	"fmt"
 	"net/smtp"
 	"slices"
 	"strings"
+	"text/template"
 
 	"github.com/willtrojniak/TabAppBackend/models"
 )
 
 type MailDriver struct {
-	from string
-	addr string
-	auth smtp.Auth
+	from     string
+	addr     string
+	auth     smtp.Auth
+	template *template.Template
 }
 
 func NewMailDriver(username, password, host, port string) *MailDriver {
+	const templateName = "resources/templates/notifications/template.html"
 	auth := smtp.PlainAuth("", username, password, host)
+	t, err := template.ParseFiles(templateName)
+	if err != nil {
+		panic(err)
+	}
 
 	return &MailDriver{
-		from: username,
-		addr: fmt.Sprintf("%v:%v", host, port),
-		auth: auth,
+		from:     username,
+		addr:     fmt.Sprintf("%v:%v", host, port),
+		auth:     auth,
+		template: t,
 	}
 }
 
@@ -63,17 +72,18 @@ func (driver *MailDriver) NotifyUsers(to []*models.User, n Notification) error {
 }
 
 func (driver *MailDriver) toHTML(emails []string, n Notification) ([]byte, error) {
-	html, err := n.HTML()
+	var res bytes.Buffer
+	err := driver.template.Execute(&res, n)
 	if err != nil {
 		return nil, err
 	}
 
 	return []byte(
 		fmt.Sprintf("To: %v\n", strings.Join(emails, ",")) +
-			fmt.Sprintf("Subject: %v\n", n.Subject()) +
+			fmt.Sprintf("Subject: %v\n", n.Heading()) +
 			"MIME-version: 1.0;\n" +
 			"Content-Type: text/html; charset=\"UTF-8\";\n" +
 			"\n" +
-			fmt.Sprintf("%v\r\n", html)), nil
+			fmt.Sprintf("%s\r\n", res.String())), nil
 
 }

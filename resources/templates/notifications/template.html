@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Heading}}</title>
+</head>
+
+<body style="font-family: sans-serif; text-align: center;">
+  <h1>{{.Heading}}</h1>
+  <h2 style="margin-bottom: 1.8rem;"> {{.SubHeading}} </h2>
+  <a href="{{.ResourceURL}}">
+    <div style="
+      display: inline-block;
+      border: none;
+      background-color: #204c39;
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 2rem;
+      font-size: 1rem;
+      margin-bottom: 1.8rem;
+    ">
+      <b>See on CafeTrackr</b>
+    </div>
+  </a>
+  <div style="max-width: 80%; width: fit-content; margin: 0 auto;">
+    <div style="border: 1px solid black; border-radius: 1rem; margin: 0 auto 1.8rem; width: 100%; overflow: hidden;">
+      <table>
+        {{range .Data}}
+        <tr>
+          <th style="text-align: right; padding: 1rem;">{{.Field}}</th>
+          <td style="text-align: left; padding: 1rem;">{{.Value}}</td>
+        </tr>
+        {{end}}
+      </table>
+    </div>
+  </div>
+  <div style="font-size: 1rem; font-weight: lighter; margin-bottom: 1.8rem;">
+    View the full details on <a href="{{.ResourceURL}}" style="
+    text-decoration: underline;
+    cursor: pointer;
+    color: blue;
+        ">CafeTrackr</a>
+  </div>
+</body>
+
+</html>

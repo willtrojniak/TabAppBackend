@@ -1,9 +1,7 @@
 package notifications
 
 import (
-	"bytes"
 	"fmt"
-	"text/template"
 
 	"github.com/willtrojniak/TabAppBackend/env"
 	"github.com/willtrojniak/TabAppBackend/models"
@@ -48,94 +46,47 @@ func (n *TabRequestNotification) IsDisabledFor(u *models.User, s *models.Shop) b
 	return !authorization.HasRole(u, s, authorization.ROLE_SHOP_MANAGE_TABS)
 }
 
-func (n *TabRequestNotification) Subject() string {
+func (n *TabRequestNotification) Heading() string {
 	return fmt.Sprintf("New Tab Request - %s", n.Tab.DisplayName)
 }
-
-func (n *TabRequestNotification) HTML() (string, error) {
-	const templateName = "resources/templates/notifications/tab-request.html"
-
-	type templateData struct {
-		ShopName          string
-		TabURL            string
-		DisplayName       string
-		RequestingOrg     string
-		RequestingContact string
-		RequestingEmail   string
-		StartDate         string
-		EndDate           string
-		StartTime         string
-		EndTime           string
+func (n *TabRequestNotification) SubHeading() string {
+	return fmt.Sprintf("A new tab request has been submitted for %s", n.Shop.Name)
+}
+func (n *TabRequestNotification) ResourceURL() string {
+	return fmt.Sprintf("%s/shops/%v/tabs/%v", env.Envs.UI_URI, n.Shop.Id, n.Tab.Id)
+}
+func (n *TabRequestNotification) Data() []NotificationData {
+	return []NotificationData{
+		{Field: "Display Name", Value: n.Tab.DisplayName},
+		{Field: "Organization", Value: n.Tab.Organization},
+		{Field: "Contact", Value: n.TabOwner.Name},
+		{Field: "Contact Email", Value: n.TabOwner.Email},
+		{Field: "Start Date", Value: fmt.Sprintf("%s %v, %v", n.Tab.StartDate.Month.String(), n.Tab.StartDate.Day, n.Tab.StartDate.Year)},
+		{Field: "End Date", Value: fmt.Sprintf("%s %v, %v", n.Tab.EndDate.Month.String(), n.Tab.EndDate.Day, n.Tab.EndDate.Year)},
+		{Field: "Start Time", Value: n.Tab.DailyStartTime.String()},
+		{Field: "End Time", Value: n.Tab.DailyEndTime.String()},
 	}
-
-	data := templateData{
-		ShopName:          n.Shop.Name,
-		TabURL:            fmt.Sprintf("%s/shops/%v/tabs/%v", env.Envs.UI_URI, n.Shop.Id, n.Tab.Id),
-		DisplayName:       n.Tab.DisplayName,
-		RequestingOrg:     n.Tab.Organization,
-		RequestingContact: n.TabOwner.Name,
-		RequestingEmail:   n.TabOwner.Email,
-		StartDate:         fmt.Sprintf("%s %v, %v", n.Tab.StartDate.Month.String(), n.Tab.StartDate.Date.Day, n.Tab.StartDate.Year),
-		EndDate:           fmt.Sprintf("%s %v, %v", n.Tab.EndDate.Month.String(), n.Tab.EndDate.Date.Day, n.Tab.EndDate.Year),
-		StartTime:         n.Tab.DailyStartTime.String(),
-		EndTime:           n.Tab.DailyEndTime.String(),
-	}
-
-	tplate, err := template.ParseFiles(templateName)
-	if err != nil {
-		return "", err
-	}
-
-	var res bytes.Buffer
-	err = tplate.Execute(&res, data)
-	if err != nil {
-		return "", err
-	}
-
-	return res.String(), nil
-
 }
 
 func (n *TabBillPaidNotification) IsDisabledFor(u *models.User, s *models.Shop) bool {
 	return !authorization.HasRole(u, s, authorization.ROLE_SHOP_MANAGE_TABS)
 }
-
-func (n *TabBillPaidNotification) Subject() string {
-	return fmt.Sprintf("Tab Receipt - %s - $%.2f",
-		n.Tab.DisplayName,
-		n.Bill.Total())
+func (n *TabBillPaidNotification) Heading() string {
+	return fmt.Sprintf("New Tab Bill Receipt")
 }
-
-func (n *TabBillPaidNotification) HTML() (string, error) {
-	const templateName = "resources/templates/notifications/tab-bill-paid.html"
-
-	type templateData struct {
-		Shop   *models.Shop
-		TabURL string
-		Tab    *models.Tab
-		Bill   *models.Bill
-		Total  string
+func (n *TabBillPaidNotification) SubHeading() string {
+	return fmt.Sprintf("Payment received for %s at %s",
+		n.Tab.DisplayName,
+		n.Shop.Name)
+}
+func (n *TabBillPaidNotification) ResourceURL() string {
+	return fmt.Sprintf("%s/shops/%v/tabs/%v", env.Envs.UI_URI, n.Shop.Id, n.Tab.Id)
+}
+func (n *TabBillPaidNotification) Data() []NotificationData {
+	return []NotificationData{
+		{Field: "Tab", Value: n.Tab.DisplayName},
+		{Field: "Total", Value: fmt.Sprintf("$%.2f", n.Bill.Total())},
+		{Field: "Bill Start Date", Value: fmt.Sprintf("%s %v, %v", n.Bill.StartDate.Month.String(), n.Bill.StartDate.Day, n.Bill.StartDate.Year)},
+		{Field: "Bill End Date", Value: fmt.Sprintf("%s %v, %v", n.Bill.EndDate.Month.String(), n.Bill.EndDate.Day, n.Bill.EndDate.Year)},
 	}
-
-	data := templateData{
-		Shop:   n.Shop,
-		TabURL: fmt.Sprintf("%s/shops/%v/tabs/%v", env.Envs.UI_URI, n.Shop.Id, n.Tab.Id),
-		Tab:    n.Tab,
-		Bill:   n.Bill,
-		Total:  fmt.Sprintf("%.2f", n.Bill.Total()),
-	}
-
-	tplate, err := template.ParseFiles(templateName)
-	if err != nil {
-		return "", err
-	}
-
-	var res bytes.Buffer
-	err = tplate.Execute(&res, data)
-	if err != nil {
-		return "", err
-	}
-
-	return res.String(), nil
-
 }

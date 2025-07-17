@@ -7,10 +7,17 @@ import (
 	"github.com/willtrojniak/TabAppBackend/services/events"
 )
 
+type NotificationData struct {
+	Field string
+	Value string
+}
+
 type Notification interface {
 	IsDisabledFor(*models.User, *models.Shop) bool
-	Subject() string
-	HTML() (string, error)
+	Heading() string
+	SubHeading() string
+	ResourceURL() string
+	Data() []NotificationData
 }
 
 type Notifier interface {
