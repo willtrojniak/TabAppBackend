@@ -244,7 +244,12 @@ func (h *Handler) handleInstallSlackCallback(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("%v/shops/%v", env.Envs.UI_URI, shopId), http.StatusFound)
+	redirectCookie, err := r.Cookie("redirect")
+	redirect := ""
+	if err == nil {
+		redirect = redirectCookie.Value
+	}
+	http.Redirect(w, r, fmt.Sprintf("%v/%v", env.Envs.UI_URI, redirect), http.StatusFound)
 }
 
 func (h *Handler) handleInviteUser(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
