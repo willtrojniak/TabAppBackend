@@ -64,7 +64,12 @@ func (q *PgxQueries) GetShops(ctx context.Context, params *models.GetShopsQueryP
 
 func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (*models.Shop, error) {
 	row, err := q.tx.Query(ctx,
-		`SELECT shops.*, shop_slack_tokens.slack_access_token,
+		`SELECT shops.*, 
+			shop_slack_tokens.slack_access_token,
+			CASE
+				WHEN shop_slack_tokens.slack_access_token IS NOT NULL THEN TRUE
+				ELSE FALSE
+			END AS slack_integrated,
       array_remove(array_agg(payment_methods.method), NULL) as payment_methods,
       (SELECT COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
        FROM locations

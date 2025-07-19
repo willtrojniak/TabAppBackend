@@ -29,6 +29,7 @@ type Shop struct {
 	Locations        []Location `json:"locations" db:"locations"`
 	Users            []ShopUser `json:"users" db:"users"`
 	SlackAccessToken *Token     `json:"-" db:"slack_access_token"`
+	SlackIntegrated  bool       `json:"slack_integrated" db:"slack_integrated"`
 }
 
 type GetShopsQueryParams struct {
