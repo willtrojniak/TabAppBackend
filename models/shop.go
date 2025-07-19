@@ -26,10 +26,9 @@ type ShopOverview struct {
 
 type Shop struct {
 	ShopOverview
-	Locations        []Location `json:"locations" db:"locations"`
-	Users            []ShopUser `json:"users" db:"users"`
-	SlackAccessToken *Token     `json:"-" db:"slack_access_token"`
-	SlackIntegrated  bool       `json:"slack_integrated" db:"slack_integrated"`
+	Locations []Location `json:"locations" db:"locations"`
+	Users     []ShopUser `json:"users" db:"users"`
+	ShopSlackData
 }
 
 type GetShopsQueryParams struct {
@@ -75,4 +74,9 @@ func (shop *Shop) ConfirmedUsers() []*User {
 		}
 	}
 	return users
+}
+
+type ShopSlackData struct {
+	SlackAccessToken *Token `json:"-" db:"slack_access_token"`
+	SlackIntegrated  bool   `json:"slack_integrated" db:"slack_integrated"`
 }
