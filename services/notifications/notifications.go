@@ -14,6 +14,7 @@ type NotificationData struct {
 
 type Notification interface {
 	IsDisabledFor(*models.User, *models.Shop) bool
+	SlackChannel(*models.Shop) string
 	Heading() string
 	SubHeading() string
 	ResourceURL() string

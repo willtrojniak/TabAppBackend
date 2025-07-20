@@ -45,7 +45,7 @@ func (n *NotificationService) onTabBillPaid(e events.TabBillPaidEvent) {
 func (n *TabRequestNotification) IsDisabledFor(u *models.User, s *models.Shop) bool {
 	return !authorization.HasRole(u, s, authorization.ROLE_SHOP_MANAGE_TABS)
 }
-
+func (n *TabRequestNotification) SlackChannel(s *models.Shop) string { return s.TabRequestSlackChannel }
 func (n *TabRequestNotification) Heading() string {
 	return fmt.Sprintf("New Tab Request - %s", n.Tab.DisplayName)
 }
@@ -70,6 +70,9 @@ func (n *TabRequestNotification) Data() []NotificationData {
 
 func (n *TabBillPaidNotification) IsDisabledFor(u *models.User, s *models.Shop) bool {
 	return !authorization.HasRole(u, s, authorization.ROLE_SHOP_MANAGE_TABS)
+}
+func (n *TabBillPaidNotification) SlackChannel(s *models.Shop) string {
+	return s.TabBillReceiptSlackChannel
 }
 func (n *TabBillPaidNotification) Heading() string {
 	return fmt.Sprintf("New Tab Bill Receipt")

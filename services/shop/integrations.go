@@ -20,8 +20,11 @@ func (h *Handler) InstallSlack(ctx context.Context, session *sessions.AuthedSess
 
 func (h *Handler) GetShopSlackChannels(ctx context.Context, session *sessions.AuthedSession, shopId int) (channels []models.SlackChannel, err error) {
 	err = WithAuthorizeShopAction(ctx, h.store, session, shopId, authorization.SHOP_ACTION_READ_SLACK_CHANNELS, func(pq *db.PgxQueries, user *models.User, shop *models.Shop) error {
+		if !shop.SlackIntegrated {
+			return services.NewUnauthorizedServiceError(nil)
+		}
+
 		client := slack.New(shop.SlackAccessToken.String())
-		h.logger.Debug("token", "t", shop.SlackAccessToken.String())
 
 		var cursor string
 		for {
@@ -32,7 +35,6 @@ func (h *Handler) GetShopSlackChannels(ctx context.Context, session *sessions.Au
 				return services.NewInternalServiceError(err)
 			}
 
-			h.logger.Debug("Shop.GetShopSlackChannels", "API_RESP", channelData, "cursor", cursor)
 			for _, c := range channelData {
 				if c.IsChannel {
 					channels = append(channels, models.SlackChannel{Name: c.Name, IsPrivate: c.IsPrivate})
@@ -50,4 +52,15 @@ func (h *Handler) GetShopSlackChannels(ctx context.Context, session *sessions.Au
 	}
 
 	return channels, nil
+}
+
+func (h *Handler) UpdateShopSlackChannels(ctx context.Context, s *sessions.AuthedSession, shopId int, data *models.ShopSlackDataUpdate) error {
+	err := models.ValidateData(data, h.logger)
+	if err != nil {
+		return err
+	}
+
+	return WithAuthorizeShopAction(ctx, h.store, s, shopId, authorization.SHOP_ACTION_UPDATE_SLACK_CHANNELS, func(pq *db.PgxQueries, user *models.User, shop *models.Shop) error {
+		return pq.UpdateShopSlackChannels(ctx, shopId, data)
+	})
 }

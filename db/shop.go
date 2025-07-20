@@ -65,9 +65,12 @@ func (q *PgxQueries) GetShops(ctx context.Context, params *models.GetShopsQueryP
 func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (*models.Shop, error) {
 	row, err := q.tx.Query(ctx,
 		`SELECT shops.*, 
-			shop_slack_tokens.slack_access_token,
+			shop_slack_connections.slack_access_token,
+			COALESCE(shop_slack_connections.daily_update_slack_channel, '') AS daily_update_slack_channel,
+			COALESCE(shop_slack_connections.tab_request_slack_channel, '') AS tab_request_slack_channel,
+			COALESCE(shop_slack_connections.tab_bill_receipt_slack_channel, '') AS tab_bill_receipt_slack_channel,
 			CASE
-				WHEN shop_slack_tokens.slack_access_token IS NOT NULL THEN TRUE
+				WHEN shop_slack_connections.slack_access_token IS NOT NULL THEN TRUE
 				ELSE FALSE
 			END AS slack_integrated,
       array_remove(array_agg(payment_methods.method), NULL) as payment_methods,
@@ -77,9 +80,9 @@ func (q *PgxQueries) GetShopById(ctx context.Context, shopId int) (*models.Shop,
       ) AS locations
     FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
-		LEFT JOIN shop_slack_tokens on shops.id = shop_slack_tokens.shop_id
+		LEFT JOIN shop_slack_connections on shops.id = shop_slack_connections.shop_id
     WHERE shops.id = @shopId
-    GROUP BY shops.id, shop_slack_tokens.shop_id`,
+    GROUP BY shops.id, shop_slack_connections.shop_id`,
 		pgx.NamedArgs{
 			"shopId": shopId,
 		})
@@ -292,7 +295,7 @@ func (pq *PgxQueries) GetShopUsers(ctx context.Context, shopId int) ([]models.Sh
 
 func (pq *PgxQueries) AddShopSlackToken(ctx context.Context, shopId int, accessToken models.Token) error {
 	res, err := pq.tx.Exec(ctx, `
-		INSERT INTO shop_slack_tokens (shop_id, slack_access_token)
+		INSERT INTO shop_slack_connections (shop_id, slack_access_token)
     VALUES (@shopId, @slackAccessToken)
     ON CONFLICT (shop_id) DO UPDATE
     SET slack_access_token = excluded.slack_access_token
@@ -301,6 +304,29 @@ func (pq *PgxQueries) AddShopSlackToken(ctx context.Context, shopId int, accessT
 			"shopId":           shopId,
 			"slackAccessToken": accessToken,
 		})
+
+	if err != nil {
+		return handlePgxError(err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return handlePgxError(pgx.ErrNoRows)
+	}
+
+	return nil
+}
+
+func (pq *PgxQueries) UpdateShopSlackChannels(ctx context.Context, shopId int, data *models.ShopSlackDataUpdate) error {
+	res, err := pq.tx.Exec(ctx, `
+    UPDATE shop_slack_connections
+    SET (daily_update_slack_channel, tab_request_slack_channel, tab_bill_receipt_slack_channel) = (@dailyUpdateChannel, @tabRequestChannel, @tabBillReceiptChannel)
+    WHERE shop_id = @shopId
+		`, pgx.NamedArgs{
+		"shopId":                shopId,
+		"dailyUpdateChannel":    data.DailyUpdateSlackChannel,
+		"tabRequestChannel":     data.TabRequestSlackChannel,
+		"tabBillReceiptChannel": data.TabBillReceiptSlackChannel,
+	})
 
 	if err != nil {
 		return handlePgxError(err)

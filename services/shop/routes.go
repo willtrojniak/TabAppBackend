@@ -33,6 +33,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	router.HandleFunc(fmt.Sprintf("GET /auth/slack/shops/{%v}", shopIdParam), h.sessions.WithAuthedSession(h.handleBeginInstallSlack))
 	router.HandleFunc(fmt.Sprintf("GET /auth/slack/callback/shops/{%v}", shopIdParam), h.sessions.WithAuthedSession(h.handleInstallSlackCallback))
 	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/slack/channels", shopIdParam), h.sessions.WithAuthedSession(h.handleGetSlackChannels))
+	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/slack/channels", shopIdParam), h.sessions.WithAuthedSession(h.handleUpdateSlackChannels))
 
 	// Payment Methods
 	router.HandleFunc("GET /payment-methods", h.sessions.WithAuthedSession(h.handleGetPaymentMethods))
@@ -266,10 +267,29 @@ func (h *Handler) handleGetSlackChannels(w http.ResponseWriter, r *http.Request,
 		h.handleError(w, err)
 		return
 	}
-	h.logger.Info("Shop.handleGetSlackChannels", "returning", channels)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(channels)
+}
+
+func (h *Handler) handleUpdateSlackChannels(w http.ResponseWriter, r *http.Request, s *sessions.AuthedSession) {
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewNotFoundServiceError(err))
+		return
+	}
+	data := models.ShopSlackDataUpdate{}
+	err = models.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.UpdateShopSlackChannels(r.Context(), s, shopId, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
 }
 
 func (h *Handler) handleInviteUser(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {

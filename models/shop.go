@@ -79,4 +79,11 @@ func (shop *Shop) ConfirmedUsers() []*User {
 type ShopSlackData struct {
 	SlackAccessToken *Token `json:"-" db:"slack_access_token"`
 	SlackIntegrated  bool   `json:"slack_integrated" db:"slack_integrated"`
+	ShopSlackDataUpdate
+}
+
+type ShopSlackDataUpdate struct {
+	DailyUpdateSlackChannel    string `json:"daily_update_slack_channel" db:"daily_update_slack_channel" validate:"max=64"`         // Empty value indicates disabled
+	TabRequestSlackChannel     string `json:"tab_request_slack_channel" db:"tab_request_slack_channel" validate:"max=64"`           // Empty value indicates disabled
+	TabBillReceiptSlackChannel string `json:"tab_bill_receipt_slack_channel" db:"tab_bill_receipt_slack_channel" validate:"max=64"` // Empty value indicates disabled
 }

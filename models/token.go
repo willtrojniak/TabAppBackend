@@ -8,11 +8,15 @@ import (
 
 type Token string
 
-func (t *Token) String() string {
-	return string(*t)
+func (t Token) String() string {
+	return string(t)
 }
 
 func (t *Token) ScanText(v pgtype.Text) error {
+	if !v.Valid {
+		*t = ""
+		return nil
+	}
 
 	token, err := util.Decrypt(v.String, []byte(env.Envs.ENCRYPT_SECRET))
 	if err != nil {
