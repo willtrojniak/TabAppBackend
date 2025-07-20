@@ -28,6 +28,7 @@ type Shop struct {
 	ShopOverview
 	Locations []Location `json:"locations" db:"locations"`
 	Users     []ShopUser `json:"users" db:"users"`
+	ShopSlackData
 }
 
 type GetShopsQueryParams struct {
@@ -63,4 +64,26 @@ type LocationCreate struct {
 type Location struct {
 	Id uint `json:"id" db:"id" validate:"required,gte=1"`
 	LocationUpdate
+}
+
+func (shop *Shop) ConfirmedUsers() []*User {
+	var users []*User
+	for _, u := range shop.Users {
+		if u.IsConfirmed {
+			users = append(users, &u.User)
+		}
+	}
+	return users
+}
+
+type ShopSlackData struct {
+	SlackAccessToken *Token `json:"-" db:"slack_access_token"`
+	SlackIntegrated  bool   `json:"slack_integrated" db:"slack_integrated"`
+	ShopSlackDataUpdate
+}
+
+type ShopSlackDataUpdate struct {
+	DailyUpdateSlackChannel    string `json:"daily_update_slack_channel" db:"daily_update_slack_channel" validate:"max=64"`         // Empty value indicates disabled
+	TabRequestSlackChannel     string `json:"tab_request_slack_channel" db:"tab_request_slack_channel" validate:"max=64"`           // Empty value indicates disabled
+	TabBillReceiptSlackChannel string `json:"tab_bill_receipt_slack_channel" db:"tab_bill_receipt_slack_channel" validate:"max=64"` // Empty value indicates disabled
 }

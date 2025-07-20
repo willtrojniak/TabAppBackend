@@ -1,9 +1,7 @@
 package notifications
 
 import (
-	"bytes"
 	"fmt"
-	"text/template"
 
 	"github.com/willtrojniak/TabAppBackend/env"
 	"github.com/willtrojniak/TabAppBackend/models"
@@ -12,21 +10,11 @@ import (
 )
 
 type TabRequestNotification struct {
-	tab      *models.Tab
-	tabOwner *models.User
-	shop     *models.Shop
+	events.TabCreateEvent
 }
 
 type TabBillPaidNotification struct {
 	events.TabBillPaidEvent
-}
-
-func NewTabRequestNotification(tab *models.Tab, tabOwner *models.User, shop *models.Shop) *TabRequestNotification {
-	return &TabRequestNotification{
-		tab:      tab,
-		tabOwner: tabOwner,
-		shop:     shop,
-	}
 }
 
 func (n *NotificationService) onTabCreate(e events.TabCreateEvent) {
@@ -39,7 +27,7 @@ func (n *NotificationService) onTabCreate(e events.TabCreateEvent) {
 			to = append(to, &user.User)
 		}
 	}
-	n.Send(to, NewTabRequestNotification(e.Tab, e.TabOwner, e.Shop))
+	n.NotifyShop(e.Shop, &TabRequestNotification{e})
 }
 
 func (n *NotificationService) onTabBillPaid(e events.TabBillPaidEvent) {
@@ -50,104 +38,58 @@ func (n *NotificationService) onTabBillPaid(e events.TabBillPaidEvent) {
 		}
 	}
 
-	to = append(to, e.TabOwner)
-	n.Send(to, &TabBillPaidNotification{e})
+	n.NotifyShop(e.Shop, &TabBillPaidNotification{e})
+	n.NotifyUsers([]*models.User{e.TabOwner}, &TabBillPaidNotification{e})
 }
 
-func (n *TabRequestNotification) IsDisabledFor(*models.User) bool {
-	// FIXME: Add column for user to enable tab create notifications
-	return false
+func (n *TabRequestNotification) IsDisabledFor(u *models.User, s *models.Shop) bool {
+	return !authorization.HasRole(u, s, authorization.ROLE_SHOP_MANAGE_TABS)
 }
-
-func (n *TabRequestNotification) Subject() string {
-	return fmt.Sprintf("New Tab Request - %s", n.tab.DisplayName)
+func (n *TabRequestNotification) SlackChannel(s *models.Shop) string { return s.TabRequestSlackChannel }
+func (n *TabRequestNotification) Heading() string {
+	return fmt.Sprintf("New Tab Request - %s", n.Tab.DisplayName)
 }
-
-func (n *TabRequestNotification) HTML() (string, error) {
-	const templateName = "resources/templates/notifications/tab-request.html"
-
-	type templateData struct {
-		ShopName          string
-		TabURL            string
-		DisplayName       string
-		RequestingOrg     string
-		RequestingContact string
-		RequestingEmail   string
-		StartDate         string
-		EndDate           string
-		StartTime         string
-		EndTime           string
+func (n *TabRequestNotification) SubHeading() string {
+	return fmt.Sprintf("A new tab request has been submitted for %s", n.Shop.Name)
+}
+func (n *TabRequestNotification) ResourceURL() string {
+	return fmt.Sprintf("%s/shops/%v/tabs/%v", env.Envs.UI_URI, n.Shop.Id, n.Tab.Id)
+}
+func (n *TabRequestNotification) Data() []NotificationData {
+	return []NotificationData{
+		{Field: "Display Name", Value: n.Tab.DisplayName},
+		{Field: "Organization", Value: n.Tab.Organization},
+		{Field: "Contact", Value: n.TabOwner.Name},
+		{Field: "Contact Email", Value: n.TabOwner.Email},
+		{Field: "Start Date", Value: fmt.Sprintf("%s %v, %v", n.Tab.StartDate.Month.String(), n.Tab.StartDate.Day, n.Tab.StartDate.Year)},
+		{Field: "End Date", Value: fmt.Sprintf("%s %v, %v", n.Tab.EndDate.Month.String(), n.Tab.EndDate.Day, n.Tab.EndDate.Year)},
+		{Field: "Start Time", Value: n.Tab.DailyStartTime.String()},
+		{Field: "End Time", Value: n.Tab.DailyEndTime.String()},
 	}
-
-	data := templateData{
-		ShopName:          n.shop.Name,
-		TabURL:            fmt.Sprintf("%s/shops/%v/tabs/%v", env.Envs.UI_URI, n.shop.Id, n.tab.Id),
-		DisplayName:       n.tab.DisplayName,
-		RequestingOrg:     n.tab.Organization,
-		RequestingContact: n.tabOwner.Name,
-		RequestingEmail:   n.tabOwner.Email,
-		StartDate:         fmt.Sprintf("%s %v, %v", n.tab.StartDate.Month.String(), n.tab.StartDate.Date.Day, n.tab.StartDate.Year),
-		EndDate:           fmt.Sprintf("%s %v, %v", n.tab.EndDate.Month.String(), n.tab.EndDate.Date.Day, n.tab.EndDate.Year),
-		StartTime:         n.tab.DailyStartTime.String(),
-		EndTime:           n.tab.DailyEndTime.String(),
-	}
-
-	tplate, err := template.ParseFiles(templateName)
-	if err != nil {
-		return "", err
-	}
-
-	var res bytes.Buffer
-	err = tplate.Execute(&res, data)
-	if err != nil {
-		return "", err
-	}
-
-	return res.String(), nil
-
 }
 
-func (n *TabBillPaidNotification) IsDisabledFor(*models.User) bool {
-	// FIXME: Add column for user to enable tab create notifications
-	return false
+func (n *TabBillPaidNotification) IsDisabledFor(u *models.User, s *models.Shop) bool {
+	return !authorization.HasRole(u, s, authorization.ROLE_SHOP_MANAGE_TABS)
 }
-
-func (n *TabBillPaidNotification) Subject() string {
-	return fmt.Sprintf("Tab Receipt - %s - $%.2f",
+func (n *TabBillPaidNotification) SlackChannel(s *models.Shop) string {
+	return s.TabBillReceiptSlackChannel
+}
+func (n *TabBillPaidNotification) Heading() string {
+	return fmt.Sprintf("New Tab Bill Receipt")
+}
+func (n *TabBillPaidNotification) SubHeading() string {
+	return fmt.Sprintf("Payment received for %s at %s",
 		n.Tab.DisplayName,
-		n.Bill.Total())
+		n.Shop.Name)
 }
-
-func (n *TabBillPaidNotification) HTML() (string, error) {
-	const templateName = "resources/templates/notifications/tab-bill-paid.html"
-
-	type templateData struct {
-		Shop   *models.Shop
-		TabURL string
-		Tab    *models.Tab
-		Bill   *models.Bill
-		Total  string
+func (n *TabBillPaidNotification) ResourceURL() string {
+	return fmt.Sprintf("%s/shops/%v/tabs/%v", env.Envs.UI_URI, n.Shop.Id, n.Tab.Id)
+}
+func (n *TabBillPaidNotification) Data() []NotificationData {
+	return []NotificationData{
+		{Field: "Tab", Value: n.Tab.DisplayName},
+		{Field: "Total", Value: fmt.Sprintf("$%.2f", n.Bill.Total())},
+		{Field: "Bill Start Date", Value: fmt.Sprintf("%s %v, %v", n.Bill.StartDate.Month.String(), n.Bill.StartDate.Day, n.Bill.StartDate.Year)},
+		{Field: "Bill End Date", Value: fmt.Sprintf("%s %v, %v", n.Bill.EndDate.Month.String(), n.Bill.EndDate.Day, n.Bill.EndDate.Year)},
 	}
-
-	data := templateData{
-		Shop:   n.Shop,
-		TabURL: fmt.Sprintf("%s/shops/%v/tabs/%v", env.Envs.UI_URI, n.Shop.Id, n.Tab.Id),
-		Tab:    n.Tab,
-		Bill:   n.Bill,
-		Total:  fmt.Sprintf("%.2f", n.Bill.Total()),
-	}
-
-	tplate, err := template.ParseFiles(templateName)
-	if err != nil {
-		return "", err
-	}
-
-	var res bytes.Buffer
-	err = tplate.Execute(&res, data)
-	if err != nil {
-		return "", err
-	}
-
-	return res.String(), nil
-
 }

@@ -19,26 +19,24 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type CreateUserFn func(context context.Context, user *models.UserCreate) (*models.User, error)
-
 type Handler struct {
 	logger         *slog.Logger
 	handleError    services.HTTPErrorHandler
 	userHandler    *user.Handler
-	config         oauth2.Config
-	provider       *oidc.Provider
+	googleCfg      oauth2.Config
+	googleProvider *oidc.Provider
 	sessionManager *sessions.Handler
 }
 
 func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.Handler, userHandler *user.Handler, logger *slog.Logger) (*Handler, error) {
-	provider, err := oidc.NewProvider(context.TODO(), "https://accounts.google.com")
+	googleProvider, err := oidc.NewProvider(context.TODO(), "https://accounts.google.com")
 	if err != nil {
 		return nil, err
 	}
-	config := oauth2.Config{
+	googleCfg := oauth2.Config{
 		ClientID:     env.Envs.OAUTH2_GOOGLE_CLIENT_ID,
 		ClientSecret: env.Envs.OAUTH2_GOOGLE_CLIENT_SECRET,
-		Endpoint:     provider.Endpoint(),
+		Endpoint:     googleProvider.Endpoint(),
 		RedirectURL:  fmt.Sprintf("%v/auth/google/callback", env.Envs.BASE_URI),
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 	}
@@ -47,13 +45,13 @@ func NewHandler(handleError services.HTTPErrorHandler, sessionManager *sessions.
 		handleError:    handleError,
 		logger:         logger,
 		userHandler:    userHandler,
-		provider:       provider,
-		config:         config,
+		googleCfg:      googleCfg,
+		googleProvider: googleProvider,
 		sessionManager: sessionManager,
 	}, nil
 }
 
-func (h *Handler) beginAuthorize(w http.ResponseWriter, r *http.Request) error {
+func (h *Handler) BeginAuthorize(w http.ResponseWriter, r *http.Request, cfg *oauth2.Config) error {
 	state, err := randString(16)
 	if err != nil {
 		return err
@@ -69,50 +67,54 @@ func (h *Handler) beginAuthorize(w http.ResponseWriter, r *http.Request) error {
 	setCallbackCookie(w, r, "state", state)
 	setCallbackCookie(w, r, "nonce", nonce)
 	setCallbackCookie(w, r, "redirect", redirect)
-	http.Redirect(w, r, h.config.AuthCodeURL(state, oidc.Nonce(nonce)), http.StatusFound)
+	http.Redirect(w, r, cfg.AuthCodeURL(state, oidc.Nonce(nonce)), http.StatusFound)
 
 	return nil
 }
 
-func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
+func (h *Handler) Authorize(r *http.Request, cfg *oauth2.Config) (*oauth2.Token, error) {
 	// Check that the CSRF token matches
 	state, err := r.Cookie("state")
 	if err != nil {
-		return services.NewInternalServiceError(err)
+		h.logger.Warn("Missing State Cookie")
+		return nil, services.NewInternalServiceError(err)
 	}
 
 	if r.URL.Query().Get("state") != state.Value {
-		return fmt.Errorf("State did not match")
+		return nil, fmt.Errorf("State did not match")
 	}
 
 	// Exchange the code for a token
-	oauth2Token, err := h.config.Exchange(r.Context(), r.URL.Query().Get("code"))
+	oauth2Token, err := cfg.Exchange(r.Context(), r.URL.Query().Get("code"))
 	if err != nil {
-		return services.NewInternalServiceError(err)
+		return nil, services.NewInternalServiceError(err)
 	}
+	return oauth2Token, nil
+}
 
+func (h *Handler) createUserFromToken(r *http.Request, token *oauth2.Token, cfg *oauth2.Config, provider *oidc.Provider) (*models.User, error) {
 	// Get the id token from the JWT
-	rawIdToken, ok := oauth2Token.Extra("id_token").(string)
+	rawIdToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		return fmt.Errorf("No id_token field in oauth2 token")
+		return nil, fmt.Errorf("No id_token field in oauth2 token")
 	}
 
 	// Verify the id token
-	oidcConfig := &oidc.Config{ClientID: env.Envs.OAUTH2_GOOGLE_CLIENT_ID}
-	verifier := h.provider.Verifier(oidcConfig)
+	oidcConfig := &oidc.Config{ClientID: cfg.ClientID}
+	verifier := provider.Verifier(oidcConfig)
 
 	idToken, err := verifier.Verify(r.Context(), rawIdToken)
 	if err != nil {
-		return services.NewInternalServiceError(err)
+		return nil, services.NewInternalServiceError(err)
 	}
 
 	nonce, err := r.Cookie("nonce")
 	if err != nil {
-		return services.NewInternalServiceError(err)
+		return nil, services.NewInternalServiceError(err)
 	}
 
 	if idToken.Nonce != nonce.Value {
-		return fmt.Errorf("nonce did not match")
+		return nil, fmt.Errorf("nonce did not match")
 	}
 
 	// Get user data from the id token
@@ -123,27 +125,22 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) error {
 		EmailVerified bool   `json:"email_verified"`
 	}
 
-	userInfo, err := h.provider.UserInfo(r.Context(), oauth2.StaticTokenSource(oauth2Token))
+	userInfo, err := provider.UserInfo(r.Context(), oauth2.StaticTokenSource(token))
 	if err != nil {
-		return services.NewInternalServiceError(err)
+		return nil, services.NewInternalServiceError(err)
 	}
 
 	if err := userInfo.Claims(&claims); err != nil {
-		return services.NewInternalServiceError(err)
+		return nil, services.NewInternalServiceError(err)
 	}
 
 	// Add the user to the database if not already
 	user, err := h.userHandler.CreateUser(r.Context(), &models.UserCreate{Id: claims.Sub, Email: claims.Email, Name: claims.Name})
 	if err != nil {
-		return services.NewInternalServiceError(err)
+		return nil, services.NewInternalServiceError(err)
 	}
 
-	_, err = h.sessionManager.SetNewSession(w, r, user)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return user, nil
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) error {
@@ -168,6 +165,7 @@ func setCallbackCookie(w http.ResponseWriter, r *http.Request, name string, valu
 	c := &http.Cookie{
 		Name:     name,
 		Value:    value,
+		Path:     "/",
 		MaxAge:   int(time.Hour.Seconds()),
 		Secure:   r.TLS != nil,
 		HttpOnly: true,

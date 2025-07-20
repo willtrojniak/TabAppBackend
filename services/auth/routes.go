@@ -8,18 +8,31 @@ import (
 )
 
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
-	router.HandleFunc("GET /auth/{provider}/callback", h.handleAuthCallback)
-	router.HandleFunc("GET /auth/{provider}", h.handleAuth)
+	router.HandleFunc("GET /auth/google/callback", h.handleAuthCallback)
+	router.HandleFunc("GET /auth/google", h.handleAuth)
 	router.HandleFunc("POST /logout", h.handleLogout)
 	h.logger.Info("Registered auth routes")
 }
 
 func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
-	err := h.authorize(w, r)
+	oauth2token, err := h.Authorize(r, &h.googleCfg)
 	if err != nil {
 		h.handleError(w, err)
 		return
 	}
+
+	user, err := h.createUserFromToken(r, oauth2token, &h.googleCfg, h.googleProvider)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	_, err = h.sessionManager.SetNewSession(w, r, user)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
 	redirectCookie, err := r.Cookie("redirect")
 	redirect := ""
 	if err == nil {
@@ -32,7 +45,7 @@ func (h *Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleAuth(w http.ResponseWriter, r *http.Request) {
-	if err := h.beginAuthorize(w, r); err != nil {
+	if err := h.BeginAuthorize(w, r, &h.googleCfg); err != nil {
 		h.handleError(w, err)
 		return
 	}

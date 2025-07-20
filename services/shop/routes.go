@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/willtrojniak/TabAppBackend/env"
 	"github.com/willtrojniak/TabAppBackend/models"
 	"github.com/willtrojniak/TabAppBackend/services"
 	"github.com/willtrojniak/TabAppBackend/services/sessions"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -26,6 +28,12 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	h.logger.Info("Registering shop routes")
 	router.HandleFunc("POST /shops", h.sessions.WithAuthedSession(h.handleCreateShop))
 	router.HandleFunc("GET /shops", h.sessions.WithAuthedSession(h.handleGetShops))
+
+	// Slack
+	router.HandleFunc(fmt.Sprintf("GET /auth/slack/shops/{%v}", shopIdParam), h.sessions.WithAuthedSession(h.handleBeginInstallSlack))
+	router.HandleFunc(fmt.Sprintf("GET /auth/slack/callback/shops/{%v}", shopIdParam), h.sessions.WithAuthedSession(h.handleInstallSlackCallback))
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/slack/channels", shopIdParam), h.sessions.WithAuthedSession(h.handleGetSlackChannels))
+	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/slack/channels", shopIdParam), h.sessions.WithAuthedSession(h.handleUpdateSlackChannels))
 
 	// Payment Methods
 	router.HandleFunc("GET /payment-methods", h.sessions.WithAuthedSession(h.handleGetPaymentMethods))
@@ -186,6 +194,98 @@ func (h *Handler) handleDeleteShop(w http.ResponseWriter, r *http.Request, sessi
 	}
 
 	err = h.DeleteShop(r.Context(), session, shopId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+}
+
+func (h *Handler) handleBeginInstallSlack(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
+		return
+	}
+	h.auth.BeginAuthorize(w, r, &oauth2.Config{
+		ClientID:     env.Envs.OAUTH2_SLACK_CLIENT_ID,
+		ClientSecret: env.Envs.OAUTH2_SLACK_CLIENT_SECRET,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "https://slack.com/oauth/v2/authorize",
+			TokenURL: "https://slack.com/api/oauth.v2.access",
+		},
+		RedirectURL: fmt.Sprintf("%v/api/v1/auth/slack/callback/shops/%v", env.Envs.BASE_URI, shopId),
+		Scopes:      []string{"channels:read", "chat:write", "chat:write.public", "groups:read"},
+	})
+}
+
+func (h *Handler) handleInstallSlackCallback(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewValidationServiceError(err, "Invalid shopId"))
+		return
+	}
+	token, err := h.auth.Authorize(r, &oauth2.Config{
+		ClientID:     env.Envs.OAUTH2_SLACK_CLIENT_ID,
+		ClientSecret: env.Envs.OAUTH2_SLACK_CLIENT_SECRET,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "https://slack.com/oauth/v2/authorize",
+			TokenURL: "https://slack.com/api/oauth.v2.access",
+		},
+		RedirectURL: fmt.Sprintf("%v/api/v1/auth/slack/callback/shops/%v", env.Envs.BASE_URI, shopId),
+		Scopes:      []string{"channels:read", "chat:write", "chat:write.public", "groups:read"},
+	})
+	if err != nil {
+		h.logger.Warn("Error getting Slack token", "err", err)
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.InstallSlack(r.Context(), session, shopId, token)
+	if err != nil {
+		h.logger.Warn("Error adding slack", "err", err)
+		h.handleError(w, err)
+		return
+	}
+
+	redirectCookie, err := r.Cookie("redirect")
+	redirect := ""
+	if err == nil {
+		redirect = redirectCookie.Value
+	}
+	http.Redirect(w, r, fmt.Sprintf("%v/%v", env.Envs.UI_URI, redirect), http.StatusFound)
+}
+
+func (h *Handler) handleGetSlackChannels(w http.ResponseWriter, r *http.Request, s *sessions.AuthedSession) {
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewNotFoundServiceError(err))
+		return
+	}
+
+	channels, err := h.GetShopSlackChannels(r.Context(), s, shopId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(channels)
+}
+
+func (h *Handler) handleUpdateSlackChannels(w http.ResponseWriter, r *http.Request, s *sessions.AuthedSession) {
+	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
+	if err != nil {
+		h.handleError(w, services.NewNotFoundServiceError(err))
+		return
+	}
+	data := models.ShopSlackDataUpdate{}
+	err = models.ReadRequestJson(r, &data)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	err = h.UpdateShopSlackChannels(r.Context(), s, shopId, &data)
 	if err != nil {
 		h.handleError(w, err)
 		return
