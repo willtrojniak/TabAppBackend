@@ -141,6 +141,13 @@ type Tab struct {
 	Bills []Bill `json:"bills" db:"bills" validate:"required,dive"`
 }
 
+type GetTabsQueryParams struct {
+	Limit   int
+	Offset  int
+	OwnerId *string
+	ShopId  *int
+}
+
 func (t *TabOverview) IsActive() bool {
 	today := DateOf(time.Now())
 	return t.Status == TAB_STATUS_CONFIRMED.String() && !t.StartDate.After(today.Date) && !t.EndDate.Before(today.Date)

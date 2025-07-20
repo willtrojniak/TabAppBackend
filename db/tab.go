@@ -306,16 +306,11 @@ func (q *PgxQueries) SetTabUpdates(ctx context.Context, shopId int, tabId int, d
 			return err
 		}
 
-		err = q.Commit(ctx)
-		if err != nil {
-			return handlePgxError(err)
-		}
-
 		return nil
 	})
 }
 
-func (q *PgxQueries) GetTabs(ctx context.Context, shopId int) ([]models.TabOverview, error) {
+func (q *PgxQueries) GetTabs(ctx context.Context, query *models.GetTabsQueryParams) ([]models.TabOverview, error) {
 	rows, err := q.tx.Query(ctx, `
     SELECT 
       tabs.*, 
@@ -324,8 +319,8 @@ func (q *PgxQueries) GetTabs(ctx context.Context, shopId int) ([]models.TabOverv
              COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
              FROM tab_updates
              LEFT JOIN tab_update_locations ON tab_updates.shop_id = tab_update_locations.shop_id
-               AND tab_updates.tab_id = tab_update_locations.shop_id
-             LEFT JOIN locations ON locations.shop_id = tabs.shop_id AND locations.id = tab_update_locations.location_id
+               AND tab_updates.tab_id = tab_update_locations.tab_id
+             LEFT JOIN locations ON locations.shop_id = tab_updates.shop_id AND locations.id = tab_update_locations.location_id
              WHERE tab_updates.shop_id = tabs.shop_id AND tab_updates.tab_id = tabs.id
              GROUP BY tab_updates.shop_id, tab_updates.tab_id
             ) AS tab_updates
@@ -344,12 +339,14 @@ func (q *PgxQueries) GetTabs(ctx context.Context, shopId int) ([]models.TabOverv
       ) AS locations
     FROM tabs
     LEFT JOIN tab_users ON tabs.shop_id = tab_users.shop_id AND tabs.id = tab_users.tab_id
-    WHERE tabs.shop_id = @shopId
+		WHERE ((@shopId::INTEGER is NULL) OR (tabs.shop_id = @shopId))
+		AND ((@ownerId::text is NULL) OR (tabs.owner_id = @ownerId))
     GROUP BY tabs.shop_id, tabs.id
     ORDER BY tabs.display_name, tabs.start_date, tabs.end_date 
     `,
-		pgx.NamedArgs{
-			"shopId": shopId,
+		pgx.NamedArgs{ // TODO: Limit and offset
+			"shopId":  query.ShopId,
+			"ownerId": query.OwnerId,
 		})
 
 	if err != nil {
@@ -377,7 +374,7 @@ func (q *PgxQueries) GetTabById(ctx context.Context, shopId int, tabId int) (*mo
              COALESCE(json_agg(locations.*) FILTER (WHERE locations.id IS NOT NULL), '[]') AS locations
              FROM tab_updates
              LEFT JOIN tab_update_locations ON tab_updates.shop_id = tab_update_locations.shop_id
-               AND tab_updates.tab_id = tab_update_locations.shop_id
+               AND tab_updates.tab_id = tab_update_locations.tab_id
              LEFT JOIN locations ON locations.shop_id = tabs.shop_id AND locations.id = tab_update_locations.location_id
              WHERE tab_updates.shop_id = tabs.shop_id AND tab_updates.tab_id = tabs.id
              GROUP BY tab_updates.shop_id, tab_updates.tab_id
