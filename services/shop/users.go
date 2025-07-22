@@ -35,6 +35,19 @@ func (h *Handler) RemoveUserFromShop(ctx context.Context, session *sessions.Auth
 	if err != nil {
 		return err
 	}
+	err = db.WithTx(ctx, h.store, func(pq *db.PgxQueries) error {
+		user, err := pq.GetUser(ctx, session.UserId)
+		if err != nil {
+			return err
+		}
+		if user.Email != data.Email {
+			return services.NewUnauthorizedServiceError(nil)
+		}
+		return pq.RemoveUserFromShop(ctx, shopId, data)
+	})
+	if err == nil {
+		return nil
+	}
 
 	return WithAuthorizeShopAction(ctx, h.store, session, shopId, authorization.SHOP_ACTION_REMOVE_USER, func(pq *db.PgxQueries, user *models.User, shop *models.Shop) error {
 		return pq.RemoveUserFromShop(ctx, shopId, data)
