@@ -55,11 +55,13 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.AuthedSession
 		return err
 	}
 
+	h.logger.Debug("Shop.UpdateTab")
 	return WithAuthorizeTabAction(ctx, h.store, session, shopId, tabId, authorization.TAB_ACTION_REQUEST_UPDATE, func(pq *db.PgxQueries, user *models.User, shop *models.Shop, tab *models.Tab) error {
 		tabLocationIds := make([]uint, 0)
 		for _, location := range tab.Locations {
 			tabLocationIds = append(tabLocationIds, location.Id)
 		}
+		h.logger.Debug("Shop.UpdateTab Authorized Request")
 
 		// Check if the 'updates' are unchanged from current tab
 		if reflect.DeepEqual(tab.TabBase, data.TabBase) && reflect.DeepEqual(tab.VerificationList, data.VerificationList) && reflect.DeepEqual(tabLocationIds, data.LocationIds) {
@@ -68,15 +70,18 @@ func (h *Handler) UpdateTab(ctx context.Context, session *sessions.AuthedSession
 
 		// Next, check if have permission to update the tab directly
 		if ok, err := authorization.AuthorizeTabAction(user, &authorization.TabTarget{Tab: tab, Shop: shop}, authorization.TAB_ACTION_UPDATE); err == nil && ok {
+			h.logger.Debug("Shop.UpdateTab Authorized Direct Update")
 			return pq.UpdateTab(ctx, shopId, tabId, data)
 		}
 
 		// Otherwise:
 		// Check if part of the tab data has changed and request updates
-		if !(reflect.DeepEqual(tab.TabBase, data.TabBase) || !reflect.DeepEqual(tabLocationIds, data.LocationIds)) {
+		if !(reflect.DeepEqual(tab.TabBase, data.TabBase)) || !reflect.DeepEqual(tabLocationIds, data.LocationIds) {
+			h.logger.Debug("Shop.UpdateTab One")
 			err = pq.SetTabUpdates(ctx, shopId, tabId, data)
 		} else {
 			// If not, only update the people on the tab
+			h.logger.Debug("Shop.UpdateTab Two")
 			err = pq.SetTabUsers(ctx, shopId, tabId, data.VerificationList)
 		}
 
@@ -170,9 +175,24 @@ func (h *Handler) MarkTabBillPaid(ctx context.Context, session *sessions.AuthedS
 	})
 }
 
-func (h *Handler) GetTabs(ctx context.Context, session *sessions.AuthedSession, shopId int) (tabs []models.TabOverview, err error) {
+func (h *Handler) GetTabsForUser(ctx context.Context, session *sessions.AuthedSession, userId string) (tabs []models.TabOverview, err error) {
+	if session.UserId != userId {
+		return nil, services.NewUnauthorizedServiceError(nil)
+	}
+
+	return db.WithTxRet(ctx, db.PgxConn(h.store), func(pq *db.PgxQueries) ([]models.TabOverview, error) {
+		query := models.GetTabsQueryParams{
+			OwnerId: &userId,
+		}
+		return pq.GetTabs(ctx, &query)
+	})
+}
+func (h *Handler) GetTabsForShop(ctx context.Context, session *sessions.AuthedSession, shopId int) (tabs []models.TabOverview, err error) {
 	err = WithAuthorizeShopAction(ctx, h.store, session, shopId, authorization.SHOP_ACTION_READ_TABS, func(pq *db.PgxQueries, user *models.User, shop *models.Shop) error {
-		tabs, err = pq.GetTabs(ctx, shopId)
+		query := models.GetTabsQueryParams{
+			ShopId: &shopId,
+		}
+		tabs, err = pq.GetTabs(ctx, &query)
 		return err
 	})
 	return tabs, err

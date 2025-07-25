@@ -28,6 +28,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 	h.logger.Info("Registering shop routes")
 	router.HandleFunc("POST /shops", h.sessions.WithAuthedSession(h.handleCreateShop))
 	router.HandleFunc("GET /shops", h.sessions.WithAuthedSession(h.handleGetShops))
+	router.HandleFunc("GET /tabs", h.sessions.WithAuthedSession(h.handleGetTabs))
 
 	// Slack
 	router.HandleFunc(fmt.Sprintf("GET /auth/slack/shops/{%v}", shopIdParam), h.sessions.WithAuthedSession(h.handleBeginInstallSlack))
@@ -79,7 +80,7 @@ func (h *Handler) RegisterRoutes(router *http.ServeMux) {
 
 	// Tabs
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/tabs", shopIdParam), h.sessions.WithAuthedSession(h.handleCreateTab))
-	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/tabs", shopIdParam), h.sessions.WithAuthedSession(h.handleGetTabs))
+	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/tabs", shopIdParam), h.sessions.WithAuthedSession(h.handleGetTabsForShop))
 	router.HandleFunc(fmt.Sprintf("GET /shops/{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.sessions.WithAuthedSession(h.handleGetTabById))
 	router.HandleFunc(fmt.Sprintf("PATCH /shops/{%v}/tabs/{%v}", shopIdParam, tabIdParam), h.sessions.WithAuthedSession(h.handleUpdateTab))
 	router.HandleFunc(fmt.Sprintf("POST /shops/{%v}/tabs/{%v}/approve", shopIdParam, tabIdParam), h.sessions.WithAuthedSession(h.handleApproveTab))
@@ -821,13 +822,24 @@ func (h *Handler) handleCreateTab(w http.ResponseWriter, r *http.Request, sessio
 }
 
 func (h *Handler) handleGetTabs(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
+	tabs, err := h.GetTabsForUser(r.Context(), session, session.UserId)
+	if err != nil {
+		h.handleError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tabs)
+}
+
+func (h *Handler) handleGetTabsForShop(w http.ResponseWriter, r *http.Request, session *sessions.AuthedSession) {
 	shopId, err := strconv.Atoi(r.PathValue(shopIdParam))
 	if err != nil {
 		h.handleError(w, services.NewValidationServiceError(err, "Invalid shop id"))
 		return
 	}
 
-	tabs, err := h.GetTabs(r.Context(), session, shopId)
+	tabs, err := h.GetTabsForShop(r.Context(), session, shopId)
 	if err != nil {
 		h.handleError(w, err)
 		return
