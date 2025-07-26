@@ -40,6 +40,7 @@ func NewNotificationService(l *slog.Logger, e *events.EventDispatcher) *Notifica
 
 	events.Register(e, n.onTabCreate)
 	events.Register(e, n.onTabBillPaid)
+	events.Register(e, n.onDailyTabReport)
 
 	return n
 }

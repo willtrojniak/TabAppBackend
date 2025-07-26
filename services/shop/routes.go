@@ -119,7 +119,7 @@ func (h *Handler) handleGetShops(w http.ResponseWriter, r *http.Request, session
 	var params models.GetShopsQueryParams
 
 	// TODO: Dynamically change limit and offset
-	params.Limit = 10
+	params.Limit = nil
 	params.Offset = 0
 
 	rawParams := r.URL.Query()

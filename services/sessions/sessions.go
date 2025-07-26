@@ -13,6 +13,7 @@ import (
 	"github.com/willtrojniak/TabAppBackend/models"
 	"github.com/willtrojniak/TabAppBackend/services"
 	"github.com/willtrojniak/TabAppBackend/util"
+	"slices"
 )
 
 const (
@@ -145,13 +146,7 @@ func (s *Handler) RequireAuth(next http.Handler) http.HandlerFunc {
 func (s *Handler) RequireCSRFToken(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestToken := getCSRFTokenFromRequest(r)
-		safeMethod := false
-		for _, val := range safe_methods {
-			if val == r.Method {
-				safeMethod = true
-				break
-			}
-		}
+		safeMethod := slices.Contains(safe_methods, r.Method)
 
 		session, sessionErr := s.GetSession(r)
 		validSession := sessionErr == nil

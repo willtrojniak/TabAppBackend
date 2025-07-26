@@ -75,10 +75,7 @@ func (h *Handler) CreateShop(ctx context.Context, session *sessions.AuthedSessio
 
 func (h *Handler) GetShops(ctx context.Context, params *models.GetShopsQueryParams) ([]models.ShopOverview, error) {
 	if params == nil {
-		params = &models.GetShopsQueryParams{
-			Offset: 0,
-			Limit:  10,
-		}
+		params = &models.GetShopsQueryParams{}
 	}
 
 	return db.WithTxRet(ctx, h.store, func(pq *db.PgxQueries) ([]models.ShopOverview, error) {
@@ -87,6 +84,7 @@ func (h *Handler) GetShops(ctx context.Context, params *models.GetShopsQueryPara
 			h.logger.Warn("Error reading from database", "error", err)
 			return nil, err
 		}
+		h.logger.Info("GetShops", "count", len(shops))
 		return shops, nil
 	})
 }

@@ -34,3 +34,8 @@ type TabBillPaidEvent struct {
 	TabOwner *models.User
 	Shop     *models.Shop
 }
+
+type DailyTabReportEvent struct {
+	Shop *models.Shop
+	Tabs []models.TabOverview
+}

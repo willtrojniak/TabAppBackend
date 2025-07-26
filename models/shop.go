@@ -32,7 +32,7 @@ type Shop struct {
 }
 
 type GetShopsQueryParams struct {
-	Limit     int
+	Limit     *int
 	Offset    int
 	IsMember  *bool
 	UserId    *string

@@ -36,7 +36,9 @@ func (q *PgxQueries) GetShops(ctx context.Context, params *models.GetShopsQueryP
 	}
 
 	rows, err := q.tx.Query(ctx,
-		`SELECT shops.*, array_remove(array_agg(payment_methods.method), NULL) as payment_methods FROM shops
+		`SELECT shops.*, 
+		array_remove(array_agg(payment_methods.method), NULL) as payment_methods 
+		FROM shops
     LEFT JOIN payment_methods on shops.id = payment_methods.shop_id
     LEFT JOIN shop_users ON shops.id = shop_users.shop_id
     WHERE ((@isMember::boolean is NULL) OR (((@userId = shop_users.user_id AND shop_users.confirmed) OR @userId = shops.owner_id) = @isMember))
