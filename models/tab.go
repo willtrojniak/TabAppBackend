@@ -148,7 +148,18 @@ type GetTabsQueryParams struct {
 	ShopId  *int
 }
 
+func (t *TabOverview) IsActiveToday() bool {
+	// FIXME: Use time zone
+	today := DateOf(time.Now())
+	td, _ := time.Parse(time.RFC3339, today.String()+"T00:00:00Z")
+
+	return t.Status == TAB_STATUS_CONFIRMED.String() &&
+		!t.StartDate.After(today.Date) && !t.EndDate.Before(today.Date) &&
+		(t.ActiveDaysOfWk&(1<<uint(td.Weekday()))) != 0
+}
+
 func (t *TabOverview) IsActive() bool {
+	// FIXME: Use time zone
 	today := DateOf(time.Now())
 	return t.Status == TAB_STATUS_CONFIRMED.String() && !t.StartDate.After(today.Date) && !t.EndDate.Before(today.Date)
 }

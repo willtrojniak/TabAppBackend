@@ -17,6 +17,10 @@ type TabBillPaidNotification struct {
 	events.TabBillPaidEvent
 }
 
+type ShopDailyTabReportNotification struct {
+	events.DailyTabReportEvent
+}
+
 func (n *NotificationService) onTabCreate(e events.TabCreateEvent) {
 	if e.Tab.Status != models.TAB_STATUS_PENDING.String() {
 		return
@@ -40,6 +44,10 @@ func (n *NotificationService) onTabBillPaid(e events.TabBillPaidEvent) {
 
 	n.NotifyShop(e.Shop, &TabBillPaidNotification{e})
 	n.NotifyUsers([]*models.User{e.TabOwner}, &TabBillPaidNotification{e})
+}
+
+func (n *NotificationService) onDailyTabReport(e events.DailyTabReportEvent) {
+	n.NotifyShop(e.Shop, &ShopDailyTabReportNotification{e})
 }
 
 func (n *TabRequestNotification) IsDisabledFor(u *models.User, s *models.Shop) bool {
@@ -92,4 +100,33 @@ func (n *TabBillPaidNotification) Data() []NotificationData {
 		{Field: "Bill Start Date", Value: fmt.Sprintf("%s %v, %v", n.Bill.StartDate.Month.String(), n.Bill.StartDate.Day, n.Bill.StartDate.Year)},
 		{Field: "Bill End Date", Value: fmt.Sprintf("%s %v, %v", n.Bill.EndDate.Month.String(), n.Bill.EndDate.Day, n.Bill.EndDate.Year)},
 	}
+}
+
+func (n *ShopDailyTabReportNotification) IsDisabledFor(u *models.User, s *models.Shop) bool {
+	return !authorization.HasRole(u, s, authorization.ROLE_SHOP_READ_TABS)
+}
+func (n *ShopDailyTabReportNotification) SlackChannel(s *models.Shop) string {
+	return s.DailyUpdateSlackChannel
+}
+func (n *ShopDailyTabReportNotification) Heading() string {
+	return fmt.Sprintf("Daily Tab Report - %s", n.Shop.Name)
+}
+func (n *ShopDailyTabReportNotification) SubHeading() string {
+	return fmt.Sprintf("%v Active Tabs Today", len(n.Tabs))
+}
+func (n *ShopDailyTabReportNotification) ResourceURL() string {
+	return fmt.Sprintf("%s/shops/%v/tabs", env.Envs.UI_URI, n.Shop.Id)
+}
+func (n *ShopDailyTabReportNotification) Data() []NotificationData {
+	data := make([]NotificationData, len(n.Tabs))
+	for i, t := range n.Tabs {
+		data[i] = NotificationData{Field: t.DisplayName,
+			Value: fmt.Sprintf("%s - %s\nLimit: $%v\nVerification: %s",
+				t.DailyStartTime.String(),
+				t.DailyEndTime.String(),
+				t.DollarLimitPerOrder,
+				t.VerificationMethod),
+		}
+	}
+	return data
 }

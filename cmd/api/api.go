@@ -1,17 +1,21 @@
 package api
 
 import (
+	"context"
 	"log"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/robfig/cron/v3"
 	"github.com/willtrojniak/TabAppBackend/cache"
 	"github.com/willtrojniak/TabAppBackend/db"
+	"github.com/willtrojniak/TabAppBackend/models"
 	"github.com/willtrojniak/TabAppBackend/services"
 	"github.com/willtrojniak/TabAppBackend/services/auth"
 	"github.com/willtrojniak/TabAppBackend/services/events"
+	"github.com/willtrojniak/TabAppBackend/services/reports"
 	"github.com/willtrojniak/TabAppBackend/services/sessions"
 	"github.com/willtrojniak/TabAppBackend/services/shop"
 	"github.com/willtrojniak/TabAppBackend/services/user"
@@ -53,6 +57,7 @@ func (s *APIServer) Run() error {
 	}
 
 	shopHandler := shop.NewHandler(s.store, authHandler, sessionManager, s.events, services.HandleHttpError, slog.Default())
+	reportHandler := reports.NewReportHandler(s.store, s.events)
 
 	router := http.NewServeMux()
 	v1 := http.NewServeMux()
@@ -63,6 +68,26 @@ func (s *APIServer) Run() error {
 
 	router.Handle("/api/v1/", http.StripPrefix("/api/v1", WithMiddleware(
 		sessionManager.RequireAuth)(v1)))
+
+	tz, _ := time.LoadLocation("America/New_York")
+	c := cron.New(cron.WithLocation(tz))
+	c.AddFunc("0 0 6 * * *", func() {
+		slog.Info("Running cron Job")
+		query := models.GetShopsQueryParams{}
+		shops, err := shopHandler.GetShops(context.Background(), &query)
+		if err != nil {
+			slog.Warn("Error retreiving all shops")
+			return
+		}
+		slog.Info("Shops", "count", len(shops))
+		for _, s := range shops {
+			slog.Info("Shop", "id", s.Id)
+			reportHandler.GenerateShopTabOverview(context.Background(), int(s.Id))
+		}
+		slog.Info("Finish cron Job")
+	})
+	c.Start()
+	defer c.Stop()
 
 	return http.ListenAndServe(s.addr, WithMiddleware(RequestLoggerMiddleware, CORSMiddleware, sessionManager.RequireCSRFToken)(router))
 }
