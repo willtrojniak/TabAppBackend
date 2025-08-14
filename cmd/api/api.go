@@ -71,7 +71,7 @@ func (s *APIServer) Run() error {
 
 	tz, _ := time.LoadLocation("America/New_York")
 	c := cron.New(cron.WithLocation(tz))
-	c.AddFunc("0 0 6 * * *", func() {
+	c.AddFunc("0 6 * * *", func() {
 		slog.Info("Running cron Job")
 		query := models.GetShopsQueryParams{}
 		shops, err := shopHandler.GetShops(context.Background(), &query)
